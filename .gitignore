@@ -16,7 +16,7 @@ dist-ssr
 
 # Corpus snapshot (grande; se regenera en el servidor)
 data/corpus.json
-server/corpus/ingest.bundle.mjs
+# El bundle sí se versiona para que QA/prod arranque sin correr Vite build
 server/corpus/ingest.bundle.mjs.map
 
 # TLS local/QA (generados con npm run tls:init; no subir llaves)
