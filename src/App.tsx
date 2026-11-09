@@ -5,21 +5,31 @@ import MenuOpenIcon from '@mui/icons-material/MenuOpen'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import ShieldIcon from '@mui/icons-material/Shield'
 import { Box, Chip, IconButton, LinearProgress, Paper, Stack, Tooltip, Typography } from '@mui/material'
-import { useEffect, useMemo, useState } from 'react'
+import { formatDistanceToNow } from 'date-fns'
+import { es } from 'date-fns/locale'
+import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useState, useTransition } from 'react'
 import { AppSelect } from './components/AppSelect'
 import { CveDrawer } from './components/CveDrawer'
 import { CveTable } from './components/CveTable'
 import { ExpandableModule } from './components/ExpandableModule'
+import { ExportExcelButton } from './components/ExportExcelButton'
 import { FiltersBar } from './components/FiltersBar'
 import { HeaderClock } from './components/HeaderClock'
 import { KpiRow } from './components/KpiRow'
 import { LibraryRiskPanel } from './components/LibraryRiskPanel'
-import { SeverityTimeline } from './components/SeverityTimeline'
 import { SourceStatus } from './components/SourceStatus'
 import { TechnologySelect } from './components/TechnologySelect'
-import { TopVulnerableTechsChart } from './components/TopVulnerableTechsChart'
+
+const SeverityTimeline = lazy(async () => {
+  const module = await import('./components/SeverityTimeline')
+  return { default: module.SeverityTimeline }
+})
+const TopVulnerableTechsChart = lazy(async () => {
+  const module = await import('./components/TopVulnerableTechsChart')
+  return { default: module.TopVulnerableTechsChart }
+})
 import { useAppsConfig } from './hooks/useAppsConfig'
-import { useCves, useFilteredCves, useLibraryScopedCves } from './hooks/useCves'
+import { useCveViews, useCves } from './hooks/useCves'
 import { buildLibraryRiskRows } from './lib/matchLibraries'
 import { useSourcesConfig } from './hooks/useSourcesConfig'
 import { useFilters } from './store/filters'
@@ -27,12 +37,13 @@ import { SEVERITY_COLOR, SEVERITY_INK } from './theme'
 import type { CveRecord, Severity } from './types'
 
 const LIBRARY_SEVERITY_ORDER: Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'NONE']
+/** Conteos de librerías (no de CVEs): evita confundir con el KPI. */
 const LIBRARY_SEVERITY_COUNT_LABEL: Record<Severity, { one: string; many: string }> = {
-  CRITICAL: { one: 'crítica', many: 'críticas' },
-  HIGH: { one: 'alta', many: 'altas' },
-  MEDIUM: { one: 'media', many: 'medias' },
-  LOW: { one: 'baja', many: 'bajas' },
-  NONE: { one: 'sin CVSS', many: 'sin CVSS' },
+  CRITICAL: { one: 'lib crítica', many: 'libs críticas' },
+  HIGH: { one: 'lib alta', many: 'libs altas' },
+  MEDIUM: { one: 'lib media', many: 'libs medias' },
+  LOW: { one: 'lib baja', many: 'libs bajas' },
+  NONE: { one: 'lib sin CVSS', many: 'libs sin CVSS' },
 }
 
 const SIDEBAR_WIDTH = 248
@@ -65,12 +76,16 @@ export default function App() {
   const { options: appOptions } = useAppsConfig()
   const {
     records, packageHits, appLibraries, libraryRiskLoading, health, isFetching, refetchAll,
+    corpusGeneratedAt, newCriticalIds,
   } = useCves()
-  const rows = useFilteredCves(records)
-  const libraryScopedRows = useLibraryScopedCves(records)
+  // Diferir el recálculo pesado mantiene la UI responsiva al cambiar de app.
+  const deferredRecords = useDeferredValue(records)
+  const deferredLibraries = useDeferredValue(appLibraries)
+  const deferredPackageHits = useDeferredValue(packageHits)
+  const { rows, libraryScopedRows } = useCveViews(deferredRecords)
   const libraryRisk = useMemo(
-    () => buildLibraryRiskRows(appLibraries, libraryScopedRows, packageHits),
-    [appLibraries, libraryScopedRows, packageHits],
+    () => buildLibraryRiskRows(deferredLibraries, libraryScopedRows, deferredPackageHits),
+    [deferredLibraries, libraryScopedRows, deferredPackageHits],
   )
   const days = useFilters((s) => s.days)
   const selectedAppId = useFilters((s) => s.selectedAppId)
@@ -83,6 +98,8 @@ export default function App() {
   const [chartsOpen, setChartsOpen] = useState(() => readBooleanStorage(CHARTS_STORAGE_KEY, false))
   const [tableOpen, setTableOpen] = useState(() => readBooleanStorage(TABLE_STORAGE_KEY, true))
   const [libsOpen, setLibsOpen] = useState(() => readBooleanStorage(LIBS_STORAGE_KEY, true))
+  const [isFilterPending, startFilterTransition] = useTransition()
+  const viewsPending = deferredRecords !== records || isFilterPending || libraryRiskLoading
 
   useEffect(() => {
     const onChange = () => setFs(Boolean(document.fullscreenElement))
@@ -150,8 +167,34 @@ export default function App() {
           <TechnologySelect minWidth={220} />
           <AppSelect minWidth={240} />
           <Box sx={{ flex: 1 }} />
+          {newCriticalIds.length > 0 && (
+            <Tooltip title={newCriticalIds.slice(0, 12).join(', ') + (newCriticalIds.length > 12 ? '…' : '')}>
+              <Chip
+                size="small"
+                color="error"
+                label={`+${newCriticalIds.length} CRITICAL`}
+                sx={{ fontWeight: 700 }}
+              />
+            </Tooltip>
+          )}
+          {corpusGeneratedAt != null && (
+            <Tooltip title={`Corpus ingerido ${new Date(corpusGeneratedAt).toLocaleString('es-MX')}`}>
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 160 }}>
+                Datos {formatDistanceToNow(corpusGeneratedAt, { locale: es, addSuffix: true })}
+              </Typography>
+            </Tooltip>
+          )}
           <HeaderClock />
-          <Tooltip title="Actualizar fuentes">
+          <ExportExcelButton
+            cves={rows}
+            libraryRisk={libraryRisk}
+            apps={appOptions}
+            selectedAppLabel={selectedAppLabel}
+            days={days}
+            corpusGeneratedAt={corpusGeneratedAt}
+            disabled={isFetching || viewsPending}
+          />
+          <Tooltip title="Forzar re-ingesta del corpus">
             <span>
               <IconButton size="small" onClick={refetchAll} disabled={isFetching} aria-label="Actualizar">
                 <RefreshIcon fontSize="small" />
@@ -213,6 +256,8 @@ export default function App() {
             px: 2,
             py: 1.5,
             overflow: 'hidden',
+            opacity: viewsPending ? 0.88 : 1,
+            transition: 'opacity 160ms ease',
           }}
         >
           <Box sx={{ flexShrink: 0 }}>
@@ -242,8 +287,10 @@ export default function App() {
                 gridTemplateColumns: { xs: '1fr', lg: '1.15fr 1fr' },
               }}
             >
-              <SeverityTimeline rows={rows} days={days} />
-              <TopVulnerableTechsChart rows={rows} technologies={config.technologies} />
+              <Suspense fallback={<Box sx={{ height: '100%' }} />}>
+                <SeverityTimeline rows={rows} days={days} />
+                <TopVulnerableTechsChart rows={rows} technologies={config.technologies} />
+              </Suspense>
             </Box>
           </ExpandableModule>
 
@@ -269,17 +316,21 @@ export default function App() {
                       ? LIBRARY_SEVERITY_COUNT_LABEL[severity].one
                       : LIBRARY_SEVERITY_COUNT_LABEL[severity].many
                     return (
-                      <Chip
+                      <Tooltip
                         key={severity}
-                        size="small"
-                        label={`${count} ${label}`}
-                        onClick={(event) => event.stopPropagation()}
-                        sx={{
-                          bgcolor: SEVERITY_COLOR[severity],
-                          color: SEVERITY_INK[severity],
-                          fontWeight: 700,
-                        }}
-                      />
+                        title={`Librerías con severidad máxima ${severity} (no es el total de CVEs del KPI)`}
+                      >
+                        <Chip
+                          size="small"
+                          label={`${count} ${label}`}
+                          onClick={(event) => event.stopPropagation()}
+                          sx={{
+                            bgcolor: SEVERITY_COLOR[severity],
+                            color: SEVERITY_INK[severity],
+                            fontWeight: 700,
+                          }}
+                        />
+                      </Tooltip>
                     )
                   })}
                   {selectedLibrary && (
@@ -300,13 +351,15 @@ export default function App() {
             >
               <LibraryRiskPanel
                 rows={libraryRisk}
-                loading={libraryRiskLoading}
+                loading={viewsPending}
                 embedded
                 onLibrarySelect={(libraryName) => {
-                  if (libraryName) {
-                    setTableOpen(true)
-                    setLibsOpen(true)
-                  }
+                  startFilterTransition(() => {
+                    if (libraryName) {
+                      setTableOpen(true)
+                      setLibsOpen(true)
+                    }
+                  })
                 }}
               />
             </ExpandableModule>
