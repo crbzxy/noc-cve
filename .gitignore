@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Corpus snapshot (grande; se regenera en el servidor)
+data/corpus.json
+server/corpus/ingest.bundle.mjs
+server/corpus/ingest.bundle.mjs.map
+
 # TLS local/QA (generados con npm run tls:init; no subir llaves)
 certs/*.pem
 certs/*.pfx

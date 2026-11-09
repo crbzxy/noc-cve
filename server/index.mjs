@@ -8,6 +8,8 @@ import { createServer as createHttpsServer } from 'node:https'
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { requireHttpsTarget, upstreams } from '../proxy.config.mjs'
+import { handleCorpusRequest } from './corpus/http.mjs'
+import { startCorpusWorker } from './corpus/store.mjs'
 
 const rootDir = dirname(fileURLToPath(import.meta.url))
 const distRoot = fileURLToPath(new URL('../dist', import.meta.url))
@@ -146,6 +148,7 @@ async function serveStatic(req, res) {
 }
 
 function onRequest(req, res) {
+  if (handleCorpusRequest(req, res)) return
   const match = Object.entries(upstreams).find(([p]) => req.url === p || req.url.startsWith(p + '/') || req.url.startsWith(p + '?'))
   if (match) return proxy(req, res, match[0], match[1])
   serveStatic(req, res).catch(() => res.writeHead(500).end())
@@ -169,6 +172,9 @@ const server = useTls
 server.listen(port, () => {
   const scheme = useTls ? 'https' : 'http'
   console.log(`NOC CVE dashboard → ${scheme}://localhost:${port}${useTls ? ` (TLS: ${tls.source})` : ''}`)
+  startCorpusWorker({ startTimer: true, ingestOnBoot: true }).catch((error) => {
+    console.error('[corpus] No se pudo iniciar worker:', error)
+  })
 })
 
 const redirectPort = Number(process.env.HTTP_REDIRECT_PORT ?? 0)

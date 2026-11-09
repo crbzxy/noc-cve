@@ -1,6 +1,6 @@
 import react from '@vitejs/plugin-react'
-import type { ServerResponse } from 'node:http'
-import { defineConfig, loadEnv, type ProxyOptions } from 'vite'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import { defineConfig, loadEnv, type Plugin, type ProxyOptions } from 'vite'
 import { upstreams } from './proxy.config.mjs'
 
 function writeProxyError(
@@ -19,6 +19,38 @@ function writeProxyError(
   })
   res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' })
   res.end(payload)
+}
+
+/** Expone /api/corpus* en Vite dev con el mismo store de producción. */
+function corpusDevPlugin(): Plugin {
+  return {
+    name: 'noc-cve-corpus',
+    configureServer(devServer) {
+      const storeImport = import('./server/corpus/store.mjs' as string) as Promise<{
+        startCorpusWorker: (options: {
+          startTimer?: boolean
+          ingestOnBoot?: boolean
+        }) => Promise<void>
+      }>
+
+      // Ingesta directa a upstreams (sin loopback al propio Vite).
+      void storeImport.then(async ({ startCorpusWorker }) => {
+        await startCorpusWorker({ startTimer: true, ingestOnBoot: true })
+      }).catch((error: unknown) => {
+        console.error('[corpus] Worker dev no iniciado:', error)
+      })
+
+      devServer.middlewares.use((req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => {
+        const httpImport = import('./server/corpus/http.mjs' as string) as Promise<{
+          handleCorpusRequest: (req: IncomingMessage, res: ServerResponse) => boolean
+        }>
+        void httpImport.then(({ handleCorpusRequest }) => {
+          if (handleCorpusRequest(req, res)) return
+          next()
+        }).catch(next)
+      })
+    },
+  }
 }
 
 export default defineConfig(({ mode }) => {
@@ -44,8 +76,8 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [react()],
-    server: { proxy, port: 5173 },
-    preview: { proxy },
+    plugins: [react(), corpusDevPlugin()],
+    server: { host: '127.0.0.1', proxy, port: 5173 },
+    preview: { host: '127.0.0.1', proxy },
   }
 })
