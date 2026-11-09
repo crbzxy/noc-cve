@@ -1,3 +1,5 @@
+import { toRequestUrl } from './requestUrl'
+
 export class HttpError extends Error {
   readonly status: number
   constructor(status: number, message: string) {
@@ -32,7 +34,7 @@ async function readErrorMessage(res: Response): Promise<string> {
 }
 
 export async function getJson<T>(url: string, signal?: AbortSignal): Promise<{ data: T; headers: Headers }> {
-  const res = await fetch(url, { signal })
+  const res = await fetch(toRequestUrl(url), { signal })
   if (!res.ok) {
     throw new HttpError(res.status, await readErrorMessage(res))
   }

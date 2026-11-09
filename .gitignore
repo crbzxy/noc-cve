@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# TLS local/QA (generados con npm run tls:init; no subir llaves)
+certs/*.pem
+certs/*.pfx
+certs/tmp.pfx
+!certs/README.txt
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
