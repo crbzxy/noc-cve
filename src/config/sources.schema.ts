@@ -11,13 +11,17 @@ export interface SourceConfig {
   authEnv?: string
 }
 
+export type TechnologyCategory = 'language' | 'framework'
+
 export interface TechnologyConfig {
   id: string
   label: string
   keywords: string[]
   /** Ids de otras tecnologías relacionadas (catálogo / proveedor). */
   related?: string[]
-  /** Nodo hub en el diagrama de relaciones (ej. SAP, LAMP). */
+  /** Incluir en el ranking de lenguajes / frameworks. */
+  category?: TechnologyCategory
+  /** Marca de plataforma central en el catálogo (ej. SAP, LAMP). */
   hub?: boolean
 }
 

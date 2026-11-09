@@ -43,6 +43,7 @@
     {
       "id": "magento",
       "label": "Magento",
+      "category": "framework",
       "keywords": ["magento", "adobe commerce", "magento open source", "magento community", "magento ce", "magento os", "mage-os"],
       "related": ["php", "mysql", "http", "redis", "linux", "varnish", "elasticsearch", "nginx", "cloudflare"],
       "hub": true
@@ -57,54 +58,112 @@
     {
       "id": "php",
       "label": "PHP",
-      "keywords": ["php", "composer", "laravel", "symfony"],
-      "related": ["mysql", "http", "linux", "magento", "lamp", "wordpress", "codeigniter"]
+      "category": "language",
+      "keywords": ["php", "composer"],
+      "related": ["mysql", "http", "linux", "magento", "lamp", "wordpress", "codeigniter", "laravel", "symfony"]
     },
     {
       "id": "java",
       "label": "Java",
+      "category": "language",
       "keywords": ["java", "jdk", "openjdk", "jvm", "maven", "gradle", "temurin", "adoptium", "corretto"],
       "related": ["spring", "linux", "docker", "sap", "tomcat", "kafka", "jenkins"]
     },
     {
       "id": "spring",
       "label": "Spring",
+      "category": "framework",
       "keywords": ["spring", "spring boot", "springframework", "spring framework", "spring security", "spring cloud"],
       "related": ["java", "tomcat", "kafka", "keycloak", "mqtt"]
     },
     {
       "id": "python",
       "label": "Python",
-      "keywords": ["python", "django", "flask", "fastapi", "pip", "pypi", "gunicorn", "uvicorn"],
-      "related": ["linux", "docker", "postgres", "redis", "nginx", "ansible"]
+      "category": "language",
+      "keywords": ["python", "pip", "pypi", "gunicorn", "uvicorn"],
+      "related": ["linux", "docker", "postgres", "redis", "nginx", "ansible", "django", "flask", "fastapi"]
+    },
+    {
+      "id": "django",
+      "label": "Django",
+      "category": "framework",
+      "keywords": ["django", "django rest framework", "djangoproject"],
+      "related": ["python", "postgres", "mysql"]
+    },
+    {
+      "id": "flask",
+      "label": "Flask",
+      "category": "framework",
+      "keywords": ["flask"],
+      "related": ["python"]
+    },
+    {
+      "id": "fastapi",
+      "label": "FastAPI",
+      "category": "framework",
+      "keywords": ["fastapi", "starlette", "uvicorn"],
+      "related": ["python"]
+    },
+    {
+      "id": "laravel",
+      "label": "Laravel",
+      "category": "framework",
+      "keywords": ["laravel", "illuminate", "lumen"],
+      "related": ["php", "mysql", "redis"]
+    },
+    {
+      "id": "symfony",
+      "label": "Symfony",
+      "category": "framework",
+      "keywords": ["symfony", "symfony framework"],
+      "related": ["php", "mysql"]
     },
     {
       "id": "nodejs",
       "label": "Node.js",
-      "keywords": ["node.js", "nodejs", "npm", "express", "nestjs", "fastify"],
-      "related": ["react", "redis", "docker", "linux", "nginx", "n8n", "mongodb"]
+      "category": "language",
+      "keywords": ["node.js", "nodejs", "npm"],
+      "related": ["react", "redis", "docker", "linux", "nginx", "n8n", "mongodb", "express"]
+    },
+    {
+      "id": "express",
+      "label": "Express",
+      "category": "framework",
+      "keywords": ["express", "express.js", "expressjs"],
+      "related": ["nodejs"]
+    },
+    {
+      "id": "nestjs",
+      "label": "NestJS",
+      "category": "framework",
+      "keywords": ["nestjs", "nest.js"],
+      "related": ["nodejs", "express"]
     },
     {
       "id": "react",
       "label": "React",
+      "category": "framework",
       "keywords": ["react", "react.js", "reactjs", "next.js", "nextjs", "create-react-app"],
       "related": ["nodejs", "htmlcss", "jamstack", "react-native"]
     },
     {
       "id": "react-native",
       "label": "React Native",
+      "category": "framework",
       "keywords": ["react native", "react-native", "expo", "metro bundler", "hermes engine"],
       "related": ["react", "nodejs"]
     },
     {
       "id": "htmlcss",
       "label": "HTML / CSS",
+      "category": "language",
       "keywords": ["html", "html5", "css", "css3", "dom xss", "cross-site scripting"],
       "related": ["react", "jamstack"]
     },
     {
       "id": "jamstack",
       "label": "JAMstack",
+      "category": "framework",
       "keywords": ["jamstack", "gatsby", "hugo", "jekyll", "eleventy", "astro", "netlify", "vercel", "nuxt"],
       "related": ["react", "nodejs", "htmlcss", "nginx", "cloudflare"],
       "hub": true
@@ -119,12 +178,14 @@
     {
       "id": "wordpress",
       "label": "WordPress",
+      "category": "framework",
       "keywords": ["wordpress", "wp-admin", "woocommerce", "wordpress plugin", "wordpress theme", "wp rest api"],
       "related": ["php", "mysql", "lamp", "nginx", "cloudflare"]
     },
     {
       "id": "codeigniter",
       "label": "CodeIgniter",
+      "category": "framework",
       "keywords": ["codeigniter", "codeigniter4", "codeigniter 4"],
       "related": ["php", "mysql", "lamp"]
     },
@@ -253,6 +314,7 @@
     {
       "id": "tomcat",
       "label": "Apache Tomcat",
+      "category": "framework",
       "keywords": ["tomcat", "apache tomcat", "catalina", "jetty", "undertow"],
       "related": ["java", "spring", "http"]
     },

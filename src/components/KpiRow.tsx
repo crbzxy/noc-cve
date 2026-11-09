@@ -73,7 +73,7 @@ export function KpiRow({ rows }: { rows: CveRecord[] }) {
         width: '100%',
       }}
     >
-      <Kpi icon={<BugReportIcon fontSize="small" />} label="En ventana" value={rows.length} hint="CVEs tras filtros" />
+      <Kpi icon={<BugReportIcon fontSize="small" />} label="Total CVEs" value={rows.length} hint="CVEs tras filtros" />
       <Kpi
         icon={<ErrorIcon fontSize="small" />}
         label="Críticas"
@@ -81,16 +81,19 @@ export function KpiRow({ rows }: { rows: CveRecord[] }) {
         accent={SEVERITY_COLOR.CRITICAL}
         hint="Severidad CRITICAL"
       />
+
+
       <Kpi
         icon={<LocalFireDepartmentIcon fontSize="small" />}
-        label="KEV"
+        label="Vulnerabilidades Explotadas Conocidas"
         value={kev}
         accent={SEVERITY_COLOR.HIGH}
         hint={`${ransom} con uso en ransomware`}
       />
+
       <Kpi
         icon={<TrendingUpIcon fontSize="small" />}
-        label="EPSS ≥ 10 %"
+        label="Probabilidad de explotación a 30 días"
         value={hotEpss}
         hint="Probabilidad de explotación a 30 días"
       />
