@@ -134,7 +134,8 @@ async function runIngest(force = false) {
       : []
 
     try {
-      const { runIngest: ingest } = await import(resolveIngestBundleUrl())
+      const bundleUrl = await resolveIngestBundleUrl()
+      const { runIngest: ingest } = await import(bundleUrl)
       const snapshot = await ingest(previousCriticalIds)
       state.snapshot = snapshot
       state.status = 'ready'

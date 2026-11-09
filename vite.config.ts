@@ -104,9 +104,12 @@ export default defineConfig(({ mode }) => {
     }
   }
 
+  // En Docker/QA usar 0.0.0.0 (VITE_DEV_HOST); en local también sirve para LAN.
+  const host = env.VITE_DEV_HOST || process.env.VITE_DEV_HOST || '0.0.0.0'
+
   return {
     plugins: [react(), authDevPlugin(), corpusDevPlugin()],
-    server: { host: '127.0.0.1', proxy, port: 5173 },
-    preview: { host: '127.0.0.1', proxy },
+    server: { host, proxy, port: 5173 },
+    preview: { host, proxy },
   }
 })
