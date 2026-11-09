@@ -9,13 +9,21 @@ interface FiltersState {
   severities: Severity[]
   sources: SourceId[]
   kevOnly: boolean
-  minEpss: number // 0..1
+  stackOnly: boolean
+  /** true = sin filtro por tech (Todas). false + [] = ninguna elegida. */
+  techAll: boolean
+  technologies: string[]
+  minEpss: number
   search: string
   refreshMin: number
   setDays: (d: WindowDays) => void
   toggleSeverity: (s: Severity) => void
   toggleSource: (s: SourceId) => void
   setKevOnly: (v: boolean) => void
+  setStackOnly: (v: boolean) => void
+  toggleTechnology: (id: string) => void
+  setTechnologies: (ids: string[]) => void
+  setTechAll: (v: boolean) => void
   setMinEpss: (v: number) => void
   setSearch: (v: string) => void
   setRefreshMin: (v: number) => void
@@ -29,6 +37,9 @@ const defaults = {
   severities: [...SEVERITIES] as Severity[],
   sources: [...SOURCES] as SourceId[],
   kevOnly: false,
+  stackOnly: true,
+  techAll: true,
+  technologies: [] as string[],
   minEpss: 0,
   search: '',
   refreshMin: 15,
@@ -42,6 +53,14 @@ export const useFilters = create<FiltersState>()(
       toggleSeverity: (s) => set((st) => ({ severities: toggle(st.severities, s) })),
       toggleSource: (s) => set((st) => ({ sources: toggle(st.sources, s) })),
       setKevOnly: (kevOnly) => set({ kevOnly }),
+      setStackOnly: (stackOnly) => set({ stackOnly }),
+      toggleTechnology: (id) =>
+        set((st) => ({
+          techAll: false,
+          technologies: toggle(st.technologies, id),
+        })),
+      setTechnologies: (technologies) => set({ techAll: false, technologies }),
+      setTechAll: (techAll) => set({ techAll, ...(techAll ? { technologies: [] as string[] } : {}) }),
       setMinEpss: (minEpss) => set({ minEpss }),
       setSearch: (search) => set({ search }),
       setRefreshMin: (refreshMin) => set({ refreshMin }),
@@ -50,7 +69,21 @@ export const useFilters = create<FiltersState>()(
     {
       name: 'noc-cve-filters',
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ search: _s, ...rest }) => rest, // la búsqueda no se persiste
+      partialize: ({ search: _s, ...rest }) => rest,
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<FiltersState>
+        return {
+          ...current,
+          ...saved,
+          stackOnly: typeof saved.stackOnly === 'boolean' ? saved.stackOnly : current.stackOnly,
+          techAll: typeof saved.techAll === 'boolean'
+            ? saved.techAll
+            : Array.isArray(saved.technologies) && saved.technologies.length === 0
+              ? true
+              : current.techAll,
+          technologies: Array.isArray(saved.technologies) ? saved.technologies : current.technologies,
+        }
+      },
     },
   ),
 )
