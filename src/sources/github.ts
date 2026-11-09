@@ -67,7 +67,7 @@ export async function fetchGithub(days: number, signal?: AbortSignal): Promise<P
   })
   const out: PartialCve[] = []
   for (let page = 0; page < MAX_PAGES; page++) {
-    const { data, headers } = await getJson<GhAdvisory[]>(`/api/github/advisories?${params}`, signal)
+    const { data, headers } = await getJson<GhAdvisory[]>(`/api/github?${params}`, signal)
     out.push(...data.map(mapGithub))
     const after = nextCursor(headers.get('link'))
     if (!after || data.length === 0) break

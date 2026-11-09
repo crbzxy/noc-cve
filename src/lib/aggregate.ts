@@ -3,12 +3,13 @@ import type { CveRecord, EpssInfo, PartialCve, Severity, SourceId } from '../typ
 import { daysAgo } from './http'
 
 const SEV_RANK: Record<Severity, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 }
+const STACK_MATCH_BOOST = 150
 const uniq = <T,>(xs: T[]) => [...new Set(xs)]
 
 function empty(id: string): CveRecord {
   return {
     id, aliases: [], description: '', severity: 'NONE', sources: [],
-    packages: [], cwes: [], references: [],
+    packages: [], cwes: [], references: [], technologies: [],
   }
 }
 
@@ -36,6 +37,7 @@ function merge(acc: CveRecord, p: PartialCve): CveRecord {
     packages: uniq([...acc.packages, ...(p.packages ?? [])]),
     cwes: uniq([...acc.cwes, ...(p.cwes ?? [])]),
     references: uniq([...acc.references, ...(p.references ?? [])]),
+    technologies: uniq([...acc.technologies, ...(p.technologies ?? [])]),
   }
 }
 
@@ -79,12 +81,13 @@ export function aggregate(
   return [...map.values()]
 }
 
-/** Prioridad NOC: explotado > EPSS alto > severidad > CVSS > fecha. */
+/** Prioridad NOC: explotado > EPSS alto > stack vigilado > severidad > CVSS. */
 export function riskScore(c: CveRecord): number {
   return (
     (c.kev ? 1000 : 0) +
     (c.kev?.ransomware ? 200 : 0) +
     (c.epss?.score ?? 0) * 500 +
+    (c.technologies.length > 0 ? STACK_MATCH_BOOST : 0) +
     SEV_RANK[c.severity] * 40 +
     (c.cvss ?? 0) * 2
   )

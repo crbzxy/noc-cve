@@ -51,7 +51,7 @@ export function SeverityTimeline({ rows, days }: { rows: CveRecord[]; days: numb
   }, [rows, days])
 
   return (
-    <Paper sx={{ p: 2, height: '100%' }}>
+    <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1, mb: 1 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Publicaciones por día y severidad</Typography>
         {/* Leyenda siempre visible: icono + texto, no solo color */}
@@ -67,8 +67,8 @@ export function SeverityTimeline({ rows, days }: { rows: CveRecord[]; days: numb
           })}
         </Stack>
       </Stack>
-      <Box sx={{ height: 220 }}>
-        <ResponsiveContainer>
+      <Box sx={{ width: '100%', height: 200 }}>
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -16 }} barCategoryGap="20%">
             <CartesianGrid vertical={false} stroke="rgba(240,239,236,0.07)" />
             <XAxis
