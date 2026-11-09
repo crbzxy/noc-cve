@@ -21,7 +21,6 @@ export interface SourcesConfigJson {
     keywords: string[]
   }>
   defaults: {
-    stackOnly: boolean
     sortBy: string
     sortDir: string
   }

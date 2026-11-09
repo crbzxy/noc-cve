@@ -187,7 +187,7 @@ export function useCves() {
 
 /** Aplica filtros de UI en un solo pase y ordena por riesgo. */
 export function useFilteredCves(records: CveRecord[]) {
-  const { severities, sources, kevOnly, stackOnly, techAll, technologies, minEpss, search } = useFilters()
+  const { severities, sources, kevOnly, techAll, technologies, minEpss, search } = useFilters()
   return useMemo(() => {
     const q = search.trim().toLowerCase()
     const severitySet = new Set(severities)
@@ -199,7 +199,6 @@ export function useFilteredCves(records: CveRecord[]) {
       if (!severitySet.has(c.severity)) return false
       if (!c.sources.some((s) => sourceSet.has(s as SourceId))) return false
       if (kevOnly && !c.kev) return false
-      if (stackOnly && c.technologies.length === 0) return false
       if (techNone) return false
       if (techSet && !c.technologies.some((techId) => techSet.has(techId))) return false
       if (minEpss > 0 && (c.epss?.score ?? 0) < minEpss) return false
@@ -216,5 +215,5 @@ export function useFilteredCves(records: CveRecord[]) {
 
     filtered.sort((a, b) => riskScore(b) - riskScore(a))
     return filtered
-  }, [records, severities, sources, kevOnly, stackOnly, techAll, technologies, minEpss, search])
+  }, [records, severities, sources, kevOnly, techAll, technologies, minEpss, search])
 }

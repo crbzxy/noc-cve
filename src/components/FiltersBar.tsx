@@ -77,11 +77,6 @@ export function FiltersBar() {
         </Stack>
 
         <FormControlLabel
-          control={<Switch size="small" checked={f.stackOnly} onChange={(e) => f.setStackOnly(e.target.checked)} />}
-          label={<Typography variant="body2">Solo stack</Typography>}
-        />
-
-        <FormControlLabel
           control={<Switch size="small" checked={f.kevOnly} onChange={(e) => f.setKevOnly(e.target.checked)} />}
           label={<Typography variant="body2">Solo explotadas</Typography>}
         />

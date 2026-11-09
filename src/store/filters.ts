@@ -9,7 +9,6 @@ interface FiltersState {
   severities: Severity[]
   sources: SourceId[]
   kevOnly: boolean
-  stackOnly: boolean
   /** true = sin filtro por tech (Todas). false + [] = ninguna elegida. */
   techAll: boolean
   technologies: string[]
@@ -20,7 +19,6 @@ interface FiltersState {
   toggleSeverity: (s: Severity) => void
   toggleSource: (s: SourceId) => void
   setKevOnly: (v: boolean) => void
-  setStackOnly: (v: boolean) => void
   toggleTechnology: (id: string) => void
   setTechnologies: (ids: string[]) => void
   setTechAll: (v: boolean) => void
@@ -37,7 +35,6 @@ const defaults = {
   severities: [...SEVERITIES] as Severity[],
   sources: [...SOURCES] as SourceId[],
   kevOnly: false,
-  stackOnly: true,
   techAll: true,
   technologies: [] as string[],
   minEpss: 0,
@@ -53,7 +50,6 @@ export const useFilters = create<FiltersState>()(
       toggleSeverity: (s) => set((st) => ({ severities: toggle(st.severities, s) })),
       toggleSource: (s) => set((st) => ({ sources: toggle(st.sources, s) })),
       setKevOnly: (kevOnly) => set({ kevOnly }),
-      setStackOnly: (stackOnly) => set({ stackOnly }),
       toggleTechnology: (id) =>
         set((st) => ({
           techAll: false,
@@ -75,7 +71,6 @@ export const useFilters = create<FiltersState>()(
         return {
           ...current,
           ...saved,
-          stackOnly: typeof saved.stackOnly === 'boolean' ? saved.stackOnly : current.stackOnly,
           techAll: typeof saved.techAll === 'boolean'
             ? saved.techAll
             : Array.isArray(saved.technologies) && saved.technologies.length === 0
@@ -87,13 +82,3 @@ export const useFilters = create<FiltersState>()(
     },
   ),
 )
-
-/** Aplica stackOnly del JSON solo si aún no hay preferencia persistida. */
-export function applyStackOnlyFromConfig(stackOnly: boolean) {
-  try {
-    if (localStorage.getItem('noc-cve-filters')) return
-  } catch {
-    // ignore
-  }
-  useFilters.setState({ stackOnly })
-}

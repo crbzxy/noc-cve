@@ -33,7 +33,6 @@ export interface TechnologyConfig {
 }
 
 export interface SourcesDefaults {
-  stackOnly: boolean
   sortBy: 'risk' | 'severity' | 'cvss' | 'epss' | 'published'
   sortDir: 'asc' | 'desc'
 }
@@ -86,7 +85,7 @@ export const FALLBACK_SOURCES_CONFIG: AppSourcesConfig = {
     },
   ],
   technologies: [],
-  defaults: { stackOnly: true, sortBy: 'risk', sortDir: 'desc' },
+  defaults: { sortBy: 'risk', sortDir: 'desc' },
 }
 
 export function isAppSourcesConfig(value: unknown): value is AppSourcesConfig {
@@ -95,7 +94,6 @@ export function isAppSourcesConfig(value: unknown): value is AppSourcesConfig {
   if (!Array.isArray(candidate.sources) || !Array.isArray(candidate.technologies) || !candidate.defaults) {
     return false
   }
-  if (typeof candidate.defaults.stackOnly !== 'boolean') return false
   const sortBy = candidate.defaults.sortBy
   const sortDir = candidate.defaults.sortDir
   const sortByOk = sortBy === 'risk' || sortBy === 'severity' || sortBy === 'cvss'

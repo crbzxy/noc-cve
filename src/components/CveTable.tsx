@@ -160,7 +160,7 @@ export function CveTable({ rows, onSelect }: { rows: CveRecord[]; onSelect: (c: 
               <TableRow>
                 <TableCell colSpan={7}>
                   <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}>
-                    Sin CVEs con los filtros actuales. Prueba desactivar «Solo stack» o ampliar tecnologías en config/sources.json.
+                    Sin CVEs con los filtros actuales. Amplía tecnologías o relaja severidad, fuentes o EPSS.
                   </Box>
                 </TableCell>
               </TableRow>
