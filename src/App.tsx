@@ -5,7 +5,7 @@ import MenuOpenIcon from '@mui/icons-material/MenuOpen'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import ShieldIcon from '@mui/icons-material/Shield'
 import { Box, Chip, IconButton, LinearProgress, Paper, Stack, Tooltip, Typography } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AppSelect } from './components/AppSelect'
 import { CveDrawer } from './components/CveDrawer'
 import { CveTable } from './components/CveTable'
@@ -19,10 +19,21 @@ import { SourceStatus } from './components/SourceStatus'
 import { TechnologySelect } from './components/TechnologySelect'
 import { TopVulnerableTechsChart } from './components/TopVulnerableTechsChart'
 import { useAppsConfig } from './hooks/useAppsConfig'
-import { useCves, useFilteredCves } from './hooks/useCves'
+import { useCves, useFilteredCves, useLibraryScopedCves } from './hooks/useCves'
+import { buildLibraryRiskRows } from './lib/matchLibraries'
 import { useSourcesConfig } from './hooks/useSourcesConfig'
 import { useFilters } from './store/filters'
-import type { CveRecord } from './types'
+import { SEVERITY_COLOR, SEVERITY_INK } from './theme'
+import type { CveRecord, Severity } from './types'
+
+const LIBRARY_SEVERITY_ORDER: Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'NONE']
+const LIBRARY_SEVERITY_COUNT_LABEL: Record<Severity, { one: string; many: string }> = {
+  CRITICAL: { one: 'crítica', many: 'críticas' },
+  HIGH: { one: 'alta', many: 'altas' },
+  MEDIUM: { one: 'media', many: 'medias' },
+  LOW: { one: 'baja', many: 'bajas' },
+  NONE: { one: 'sin CVSS', many: 'sin CVSS' },
+}
 
 const SIDEBAR_WIDTH = 248
 const SIDEBAR_STORAGE_KEY = 'noc-cve-sidebar-open'
@@ -52,8 +63,15 @@ function persistBoolean(key: string, value: boolean): void {
 export default function App() {
   const { config } = useSourcesConfig()
   const { options: appOptions } = useAppsConfig()
-  const { records, libraryRisk, libraryRiskLoading, health, isFetching, refetchAll } = useCves()
+  const {
+    records, packageHits, appLibraries, libraryRiskLoading, health, isFetching, refetchAll,
+  } = useCves()
   const rows = useFilteredCves(records)
+  const libraryScopedRows = useLibraryScopedCves(records)
+  const libraryRisk = useMemo(
+    () => buildLibraryRiskRows(appLibraries, libraryScopedRows, packageHits),
+    [appLibraries, libraryScopedRows, packageHits],
+  )
   const days = useFilters((s) => s.days)
   const selectedAppId = useFilters((s) => s.selectedAppId)
   const selectedLibrary = useFilters((s) => s.selectedLibrary)
@@ -81,7 +99,14 @@ export default function App() {
     document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()
 
   const hasSourceError = health.some((h) => h.status === 'error')
-  const vulnerableLibs = libraryRisk.filter((row) => row.status === 'vulnerable').length
+  const librarySeverityCounts = useMemo(() => {
+    const counts: Partial<Record<Severity, number>> = {}
+    for (const row of libraryRisk) {
+      if (row.status !== 'vulnerable' || !row.maxSeverity) continue
+      counts[row.maxSeverity] = (counts[row.maxSeverity] ?? 0) + 1
+    }
+    return counts
+  }, [libraryRisk])
 
   return (
     <Box
@@ -237,9 +262,26 @@ export default function App() {
                       {selectedAppLabel}
                     </Typography>
                   )}
-                  {vulnerableLibs > 0 && (
-                    <Chip size="small" color="error" variant="outlined" label={`${vulnerableLibs} con CVE`} />
-                  )}
+                  {LIBRARY_SEVERITY_ORDER.map((severity) => {
+                    const count = librarySeverityCounts[severity] ?? 0
+                    if (count === 0) return null
+                    const label = count === 1
+                      ? LIBRARY_SEVERITY_COUNT_LABEL[severity].one
+                      : LIBRARY_SEVERITY_COUNT_LABEL[severity].many
+                    return (
+                      <Chip
+                        key={severity}
+                        size="small"
+                        label={`${count} ${label}`}
+                        onClick={(event) => event.stopPropagation()}
+                        sx={{
+                          bgcolor: SEVERITY_COLOR[severity],
+                          color: SEVERITY_INK[severity],
+                          fontWeight: 700,
+                        }}
+                      />
+                    )
+                  })}
                   {selectedLibrary && (
                     <Chip
                       size="small"

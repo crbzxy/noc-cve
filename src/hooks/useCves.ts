@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import type { AppSourcesConfig, WatchedPackage } from '../config/sources.schema'
 import { findSource } from '../config/sources.schema'
 import { aggregate, riskScore } from '../lib/aggregate'
-import { applyLibraryMatches, buildLibraryRiskRows, type LibraryRiskRow } from '../lib/matchLibraries'
+import { applyLibraryMatches } from '../lib/matchLibraries'
 import { applyTechnologyTags } from '../lib/matchTechnologies'
 import { packageKeyOf, resolveAppStack } from '../lib/resolveAppStack'
 import { fetchCveOrg } from '../sources/cveorg'
@@ -256,11 +256,6 @@ export function useCves() {
     })
   }, [withLibraries, epss.data])
 
-  const libraryRisk: LibraryRiskRow[] = useMemo(() => {
-    if (!appStack) return []
-    return buildLibraryRiskRows(appStack.libraries, records, packageHits)
-  }, [appStack, records, packageHits])
-
   const nvdMeta = findSource(config, 'nvd')
   const ghMeta = findSource(config, 'github')
   const cveorgMeta = findSource(config, 'cveorg')
@@ -306,7 +301,8 @@ export function useCves() {
 
   return {
     records,
-    libraryRisk,
+    packageHits,
+    appLibraries: appStack?.libraries ?? [],
     libraryRiskLoading: Boolean(selectedAppId) && osvOn && osv.isFetching,
     health: healthList,
     isFetching:
@@ -314,6 +310,62 @@ export function useCves() {
       || osv.isFetching || euvd.isFetching || kev.isFetching || vulncheckKev.isFetching || epss.isFetching,
     refetchAll: () => healthList.forEach((h) => h.refetch()),
   }
+}
+
+function filterCveRecords(
+  records: CveRecord[],
+  options: {
+    severities: Set<string>
+    sources: Set<string>
+    kevOnly: boolean
+    techAll: boolean
+    technologies: string[]
+    minEpss: number
+    search: string
+    appStack: ReturnType<typeof resolveAppStack> | null
+    selectedLibrary: string | null
+    ignoreLibraryFilter?: boolean
+  },
+): CveRecord[] {
+  const q = options.search.trim().toLowerCase()
+  const appTechSet = options.appStack ? new Set(options.appStack.techIds) : null
+  const techSet = !appTechSet && !options.techAll && options.technologies.length > 0
+    ? new Set(options.technologies)
+    : null
+  const techNone = !appTechSet && !options.techAll && options.technologies.length === 0
+  const libraryFilter = options.ignoreLibraryFilter ? null : options.selectedLibrary
+
+  const filtered = records.filter((c) => {
+    if (!options.severities.has(c.severity)) return false
+    if (!c.sources.some((s) => options.sources.has(s as SourceId))) return false
+    if (options.kevOnly && !c.kev) return false
+    if (techNone) return false
+
+    if (libraryFilter) {
+      if (!c.matchedLibraries.includes(libraryFilter)) return false
+    } else if (options.appStack && options.appStack.libraries.length > 0) {
+      if (c.matchedLibraries.length === 0) return false
+    } else if (appTechSet) {
+      if (!c.technologies.some((techId) => appTechSet.has(techId))) return false
+    } else if (techSet && !c.technologies.some((techId) => techSet.has(techId))) {
+      return false
+    }
+
+    if (options.minEpss > 0 && (c.epss?.score ?? 0) < options.minEpss) return false
+    if (!q) return true
+    return (
+      c.id.toLowerCase().includes(q)
+      || (c.title ?? '').toLowerCase().includes(q)
+      || c.description.toLowerCase().includes(q)
+      || c.aliases.some((a) => a.toLowerCase().includes(q))
+      || c.packages.some((p) => p.toLowerCase().includes(q))
+      || c.technologies.some((t) => t.includes(q))
+      || c.matchedLibraries.some((lib) => lib.toLowerCase().includes(q))
+    )
+  })
+
+  filtered.sort((a, b) => riskScore(b) - riskScore(a))
+  return filtered
 }
 
 /** Aplica filtros de UI en un solo pase y ordena por riesgo. */
@@ -330,48 +382,57 @@ export function useFilteredCves(records: CveRecord[]) {
     return option ? resolveAppStack(option.entry) : null
   }, [appOptions, selectedAppId])
 
-  return useMemo(() => {
-    const q = search.trim().toLowerCase()
-    const severitySet = new Set(severities)
-    const sourceSet = new Set(sources)
-    const appTechSet = appStack ? new Set(appStack.techIds) : null
-    const techSet = !appTechSet && !techAll && technologies.length > 0 ? new Set(technologies) : null
-    const techNone = !appTechSet && !techAll && technologies.length === 0
+  return useMemo(
+    () => filterCveRecords(records, {
+      severities: new Set(severities),
+      sources: new Set(sources),
+      kevOnly,
+      techAll,
+      technologies,
+      minEpss,
+      search,
+      appStack,
+      selectedLibrary,
+    }),
+    [
+      records, severities, sources, kevOnly, techAll, technologies, minEpss,
+      search, appStack, selectedLibrary,
+    ],
+  )
+}
 
-    const filtered = records.filter((c) => {
-      if (!severitySet.has(c.severity)) return false
-      if (!c.sources.some((s) => sourceSet.has(s as SourceId))) return false
-      if (kevOnly && !c.kev) return false
-      if (techNone) return false
+/**
+ * Mismos filtros que la tabla CVE, pero sin filtrar por librería seleccionada.
+ * Así el panel de librerías cuenta exactamente lo que verás al hacer clic en cada una.
+ */
+export function useLibraryScopedCves(records: CveRecord[]) {
+  const { options: appOptions } = useAppsConfig()
+  const {
+    severities, sources, kevOnly, techAll, technologies, minEpss, search, selectedAppId,
+  } = useFilters()
 
-      // App con inventario: solo CVEs de sus librerías (no todo Java/Spring del catálogo).
-      if (selectedLibrary) {
-        if (!c.matchedLibraries.includes(selectedLibrary)) return false
-      } else if (appStack && appStack.libraries.length > 0) {
-        if (c.matchedLibraries.length === 0) return false
-      } else if (appTechSet) {
-        if (!c.technologies.some((techId) => appTechSet.has(techId))) return false
-      } else if (techSet && !c.technologies.some((techId) => techSet.has(techId))) {
-        return false
-      }
+  const appStack = useMemo(() => {
+    if (!selectedAppId) return null
+    const option = appOptions.find((item) => item.id === selectedAppId)
+    return option ? resolveAppStack(option.entry) : null
+  }, [appOptions, selectedAppId])
 
-      if (minEpss > 0 && (c.epss?.score ?? 0) < minEpss) return false
-      if (!q) return true
-      return (
-        c.id.toLowerCase().includes(q)
-        || (c.title ?? '').toLowerCase().includes(q)
-        || c.description.toLowerCase().includes(q)
-        || c.aliases.some((a) => a.toLowerCase().includes(q))
-        || c.packages.some((p) => p.toLowerCase().includes(q))
-        || c.technologies.some((t) => t.includes(q))
-        || c.matchedLibraries.some((lib) => lib.toLowerCase().includes(q))
-      )
-    })
-
-    filtered.sort((a, b) => riskScore(b) - riskScore(a))
-    return filtered
-  }, [
-    records, severities, sources, kevOnly, techAll, technologies, minEpss,
-    search, appStack, selectedLibrary,
-  ])
+  return useMemo(
+    () => filterCveRecords(records, {
+      severities: new Set(severities),
+      sources: new Set(sources),
+      kevOnly,
+      techAll,
+      technologies,
+      minEpss,
+      search,
+      appStack,
+      selectedLibrary: null,
+      ignoreLibraryFilter: true,
+    }),
+    [
+      records, severities, sources, kevOnly, techAll, technologies, minEpss,
+      search, appStack,
+    ],
+  )
 }

@@ -54,9 +54,19 @@ export function applyLibraryMatches(
     libsByCve.set(cveId, set)
   }
 
+  // OSV puede devolver GHSA; también etiquetamos por alias del registro.
+  const aliasIndex = new Map<string, string>()
+  for (const record of records) {
+    aliasIndex.set(record.id, record.id)
+    for (const alias of record.aliases) aliasIndex.set(alias, record.id)
+  }
+
   for (const hit of packageHits) {
     const label = displayNameForPackage(libraries, hit.packageKey, hit.name)
-    for (const vulnId of hit.vulnIds) add(vulnId, label)
+    for (const vulnId of hit.vulnIds) {
+      const canonical = aliasIndex.get(vulnId)
+      if (canonical) add(canonical, label)
+    }
   }
 
   return records.map((record) => {
@@ -78,14 +88,19 @@ export function applyLibraryMatches(
   })
 }
 
-/** Estado por librería del inventario de la app seleccionada. */
+/**
+ * Estado por librería usando SOLO los CVE ya visibles en el dashboard
+ * (misma ventana/filtros que la tabla), no el total histórico de OSV.
+ */
 export function buildLibraryRiskRows(
   libraries: TrackedLibrary[],
   records: CveRecord[],
-  packageHits: OsvPackageHit[],
+  packageHits: OsvPackageHit[] = [],
 ): LibraryRiskRow[] {
-  const recordsById = new Map(records.map((record) => [record.id, record]))
   const hitsByKey = new Map(packageHits.map((hit) => [hit.packageKey, hit]))
+  const queriedKeys = new Set(
+    packageHits.map((hit) => hit.packageKey),
+  )
 
   return libraries.map((library) => {
     if (library.kind === 'internal') {
@@ -98,32 +113,37 @@ export function buildLibraryRiskRows(
       }
     }
 
-    const hit = library.watched ? hitsByKey.get(library.packageKey) : undefined
-    const fromOsv = hit?.vulnIds ?? []
-    const fromText = records
-      .filter((record) => record.matchedLibraries.includes(library.displayName))
-      .map((record) => record.id)
-    const cveIds = [...new Set([...fromOsv, ...fromText])]
-    const linked = cveIds
-      .map((id) => recordsById.get(id))
-      .filter((record): record is CveRecord => Boolean(record))
+    const linked = records.filter((record) => record.matchedLibraries.includes(library.displayName))
+    const cveIds = linked.map((record) => record.id)
+    const versionUnconfirmed = !library.version
+    const wasQueried = library.watched ? queriedKeys.has(library.packageKey) || hitsByKey.has(library.packageKey) : false
+
+    if (cveIds.length > 0) {
+      return {
+        library,
+        status: 'vulnerable',
+        cveIds,
+        maxSeverity: maxSeverityOf(linked),
+        versionUnconfirmed,
+      }
+    }
 
     if (!library.watched) {
       return {
         library,
-        status: cveIds.length > 0 ? 'vulnerable' : 'unchecked',
-        cveIds,
-        maxSeverity: maxSeverityOf(linked),
-        versionUnconfirmed: !library.version,
+        status: 'unchecked',
+        cveIds: [],
+        maxSeverity: null,
+        versionUnconfirmed,
       }
     }
 
     return {
       library,
-      status: cveIds.length > 0 ? 'vulnerable' : 'clean',
-      cveIds,
-      maxSeverity: maxSeverityOf(linked),
-      versionUnconfirmed: !library.version,
+      status: wasQueried || Boolean(library.watched) ? 'clean' : 'unchecked',
+      cveIds: [],
+      maxSeverity: null,
+      versionUnconfirmed,
     }
   })
 }

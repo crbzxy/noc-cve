@@ -222,9 +222,12 @@ export function trackLibrary(raw: string): TrackedLibrary | null {
   }
 }
 
+/** Nombres cortos/ambiguos: solo se cruzan por OSV (Maven), no por texto libre. */
+const TEXT_NEEDLE_MIN = 5
+
 function needleFromLibrary(library: TrackedLibrary): string | undefined {
   if (library.kind === 'internal') return undefined
-  if (library.needle.length < 3) return undefined
+  if (library.needle.length < TEXT_NEEDLE_MIN) return undefined
   return library.needle
 }
 
@@ -271,6 +274,10 @@ export function librariesMatchingHaystack(
 ): string[] {
   const lower = haystack.toLowerCase()
   return libraries
-    .filter((library) => library.kind !== 'internal' && library.needle.length >= 3 && lower.includes(library.needle))
+    .filter((library) => {
+      if (library.kind === 'internal') return false
+      const needle = needleFromLibrary(library)
+      return Boolean(needle && lower.includes(needle))
+    })
     .map((library) => library.displayName)
 }
