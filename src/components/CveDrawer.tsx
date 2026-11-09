@@ -41,8 +41,16 @@ export function CveDrawer({ cve, onClose }: { cve: CveRecord | null; onClose: ()
 
           {cve.kev && (
             <Alert severity="error" variant="outlined">
-              <strong>Explotada activamente (CISA KEV)</strong> desde {cve.kev.dateAdded}
-              {cve.kev.dueDate && <> · fecha límite federal {cve.kev.dueDate}</>}
+              <strong>
+                Explotada activamente (
+                {cve.kev.catalog === 'vulncheck' ? 'VulnCheck KEV' : 'CISA KEV'}
+                )
+              </strong>
+              {' '}desde {cve.kev.dateAdded}
+              {cve.sources.includes('vulncheck-kev') && cve.sources.includes('kev') && (
+                <> · también en el otro catálogo KEV</>
+              )}
+              {cve.kev.dueDate && <> · fecha límite {cve.kev.dueDate}</>}
               {cve.kev.ransomware && <> · <strong>usada en campañas de ransomware</strong></>}
               {cve.kev.requiredAction && <Typography variant="body2" sx={{ mt: 1 }}>{cve.kev.requiredAction}</Typography>}
             </Alert>
@@ -58,6 +66,15 @@ export function CveDrawer({ cve, onClose }: { cve: CveRecord | null; onClose: ()
               <Stack direction="row" spacing={0.5} useFlexGap sx={{ flexWrap: 'wrap' }}>
                 {cve.technologies.map((techId) => (
                   <Chip key={techId} size="small" color="secondary" label={techLabelById[techId] ?? techId} />
+                ))}
+              </Stack>
+            </Field>
+          )}
+          {cve.matchedLibraries.length > 0 && (
+            <Field label="Librerías del inventario">
+              <Stack direction="row" spacing={0.5} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                {cve.matchedLibraries.map((library) => (
+                  <Chip key={library} size="small" color="warning" label={library} sx={{ fontFamily: MONO }} />
                 ))}
               </Stack>
             </Field>

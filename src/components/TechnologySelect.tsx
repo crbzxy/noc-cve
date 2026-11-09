@@ -134,6 +134,7 @@ export function TechnologySelect({ minWidth = 280 }: { minWidth?: number }) {
     const stack = stacks.find((item) => item.name === stackName)
     const stackIds = stack?.techIds ?? []
     const alreadyOnlyThisStack = !allSelected && sameIdSet(selectedTech, stackIds)
+    f.setSelectedApp(null)
     // Una sola escritura: nunca dejar techAll=true al elegir TEL/stack
     if (alreadyOnlyThisStack) {
       f.setTechnologies([])
@@ -169,6 +170,7 @@ export function TechnologySelect({ minWidth = 280 }: { minWidth?: number }) {
     }
 
     // 3) Tecnologías sueltas (nunca mezclar con Todas)
+    f.setSelectedApp(null)
     f.setTechnologies(next.filter((id) => id !== ALL_TECH && !isStackToken(id) && techIds.includes(id)))
   }
 

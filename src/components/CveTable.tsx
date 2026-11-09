@@ -15,7 +15,16 @@ import { SeverityChip } from './SeverityChip'
 type SortKey = 'risk' | 'severity' | 'cvss' | 'epss' | 'published'
 const SEV_ORDER = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 }
 
-const SOURCE_SHORT: Record<SourceId, string> = { nvd: 'NVD', kev: 'KEV', github: 'GH' }
+const SOURCE_SHORT: Record<SourceId, string> = {
+  nvd: 'NVD',
+  kev: 'KEV',
+  github: 'GH',
+  cveorg: 'CVE',
+  osv: 'OSV',
+  euvd: 'EUVD',
+  'vulncheck-kev': 'VCKEV',
+  wordfence: 'WF',
+}
 
 const sorters: Record<Exclude<SortKey, 'risk'>, (a: CveRecord, b: CveRecord) => number> = {
   severity: (a, b) =>
@@ -26,7 +35,16 @@ const sorters: Record<Exclude<SortKey, 'risk'>, (a: CveRecord, b: CveRecord) => 
   published: (a, b) => (a.published ?? '').localeCompare(b.published ?? ''),
 }
 
-export function CveTable({ rows, onSelect }: { rows: CveRecord[]; onSelect: (c: CveRecord) => void }) {
+export function CveTable({
+  rows,
+  onSelect,
+  embedded = false,
+}: {
+  rows: CveRecord[]
+  onSelect: (c: CveRecord) => void
+  /** Sin borde propio cuando ya vive dentro de un Paper contenedor. */
+  embedded?: boolean
+}) {
   const { config } = useSourcesConfig()
   const [sort, setSort] = useState<SortKey>(config.defaults.sortBy)
   const [dir, setDir] = useState<'asc' | 'desc'>(config.defaults.sortDir)
@@ -72,8 +90,8 @@ export function CveTable({ rows, onSelect }: { rows: CveRecord[]; onSelect: (c: 
     </TableCell>
   )
 
-  return (
-    <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+  const body = (
+    <>
       <TableContainer sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
         <Table stickyHeader size="small" aria-label="Lista de CVEs">
           <TableHead>
@@ -131,8 +149,14 @@ export function CveTable({ rows, onSelect }: { rows: CveRecord[]; onSelect: (c: 
                   <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: c.title ? 1 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     {c.description || 'Sin descripción'}
                   </Typography>
-                  {(c.packages.length > 0 || c.technologies.length > 0) && (
+                  {(c.packages.length > 0 || c.technologies.length > 0 || c.matchedLibraries.length > 0) && (
                     <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: 'wrap' }} useFlexGap>
+                      {c.matchedLibraries.slice(0, 3).map((library) => (
+                        <Chip key={library} size="small" color="warning" variant="outlined" label={library} />
+                      ))}
+                      {c.matchedLibraries.length > 3 && (
+                        <Chip size="small" color="warning" variant="outlined" label={`+${c.matchedLibraries.length - 3}`} />
+                      )}
                       {c.technologies.slice(0, 4).map((techId) => (
                         <Chip key={techId} size="small" color="secondary" variant="outlined" label={techLabel[techId] ?? techId} />
                       ))}
@@ -180,6 +204,20 @@ export function CveTable({ rows, onSelect }: { rows: CveRecord[]; onSelect: (c: 
         labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
         sx={{ flexShrink: 0, borderTop: 1, borderColor: 'divider' }}
       />
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+        {body}
+      </Box>
+    )
+  }
+
+  return (
+    <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+      {body}
     </Paper>
   )
 }

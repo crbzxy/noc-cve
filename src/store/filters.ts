@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
-import { SEVERITIES, SOURCES, type Severity, type SourceId } from '../types'
+import { SEVERITIES, SOURCES, isSourceId, type Severity, type SourceId } from '../types'
 
 export type WindowDays = 1 | 7 | 15 | 30 | 90
 
@@ -18,6 +18,10 @@ interface FiltersState {
   /** true = sin filtro por tech (Todas). false + [] = ninguna elegida. */
   techAll: boolean
   technologies: string[]
+  /** App del inventario; null = sin filtro por aplicación. */
+  selectedAppId: string | null
+  /** Librería del panel; filtra la tabla CVE a hallazgos de esa lib. */
+  selectedLibrary: string | null
   minEpss: number
   search: string
   refreshMin: number
@@ -28,6 +32,8 @@ interface FiltersState {
   toggleTechnology: (id: string) => void
   setTechnologies: (ids: string[]) => void
   setTechAll: (v: boolean) => void
+  setSelectedApp: (id: string | null) => void
+  setSelectedLibrary: (name: string | null) => void
   setMinEpss: (v: number) => void
   setSearch: (v: string) => void
   setRefreshMin: (v: number) => void
@@ -43,6 +49,8 @@ const defaults = {
   kevOnly: false,
   techAll: true,
   technologies: [] as string[],
+  selectedAppId: null as string | null,
+  selectedLibrary: null as string | null,
   minEpss: 0,
   search: '',
   refreshMin: 15,
@@ -59,10 +67,17 @@ export const useFilters = create<FiltersState>()(
       toggleTechnology: (id) =>
         set((st) => ({
           techAll: false,
+          selectedAppId: null,
           technologies: toggle(st.technologies, id),
         })),
       setTechnologies: (technologies) => set({ techAll: false, technologies }),
-      setTechAll: (techAll) => set({ techAll, ...(techAll ? { technologies: [] as string[] } : {}) }),
+      setTechAll: (techAll) => set({
+        techAll,
+        selectedAppId: null,
+        ...(techAll ? { technologies: [] as string[] } : {}),
+      }),
+      setSelectedApp: (selectedAppId) => set({ selectedAppId, selectedLibrary: null }),
+      setSelectedLibrary: (selectedLibrary) => set({ selectedLibrary }),
       setMinEpss: (minEpss) => set({ minEpss }),
       setSearch: (search) => set({ search }),
       setRefreshMin: (refreshMin) => set({ refreshMin }),
@@ -71,19 +86,27 @@ export const useFilters = create<FiltersState>()(
     {
       name: 'noc-cve-filters',
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ search: _s, ...rest }) => rest,
+      partialize: ({ search: _search, selectedLibrary: _library, ...rest }) => rest,
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<FiltersState>
+        const savedSources = Array.isArray(saved.sources)
+          ? saved.sources.filter(isSourceId)
+          : [...SOURCES]
+        const missingSources = SOURCES.filter((id) => !savedSources.includes(id))
         return {
           ...current,
           ...saved,
           days: isWindowDays(saved.days) ? saved.days : current.days,
+          sources: [...savedSources, ...missingSources],
           techAll: typeof saved.techAll === 'boolean'
             ? saved.techAll
             : Array.isArray(saved.technologies) && saved.technologies.length === 0
               ? true
               : current.techAll,
           technologies: Array.isArray(saved.technologies) ? saved.technologies : current.technologies,
+          selectedAppId: typeof saved.selectedAppId === 'string' || saved.selectedAppId === null
+            ? saved.selectedAppId
+            : current.selectedAppId,
         }
       },
     },
