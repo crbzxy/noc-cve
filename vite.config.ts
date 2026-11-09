@@ -86,12 +86,18 @@ export default defineConfig(({ mode }) => {
   // Carga .env sin prefijo VITE_ (solo disponible en Node, no en el cliente)
   const env = loadEnv(mode, process.cwd(), '')
 
+  // QA corporativo suele interceptar HTTPS con CA interna (self-signed in chain).
+  const insecureTls = (env.UPSTREAM_TLS_INSECURE || process.env.UPSTREAM_TLS_INSECURE) === '1'
+  if (insecureTls) {
+    console.warn('[proxy] UPSTREAM_TLS_INSECURE=1 — no se valida el certificado TLS de upstreams')
+  }
+
   const proxy: Record<string, ProxyOptions> = {}
   for (const [prefix, up] of Object.entries(upstreams)) {
     proxy[prefix] = {
       target: up.target,
       changeOrigin: true,
-      secure: true,
+      secure: !insecureTls,
       timeout: 30_000,
       proxyTimeout: 30_000,
       headers: up.headers(env),
