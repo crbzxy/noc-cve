@@ -1,13 +1,37 @@
 // Snapshot canónico del corpus CVE (memoria + archivo opcional).
+import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { installDirectCorpusFetch } from './directFetch.mjs'
 
 const rootDir = dirname(fileURLToPath(import.meta.url))
-const projectRoot = join(rootDir, '..', '..')
+const projectRoot = resolveProjectRoot(rootDir)
 const dataDir = join(projectRoot, 'data')
 const snapshotPath = join(dataDir, 'corpus.json')
+
+/** Vite puede cargar este módulo desde `.vite-temp`; no confiar solo en import.meta.url. */
+function resolveProjectRoot(moduleDir) {
+  const fromModule = join(moduleDir, '..', '..')
+  if (existsSync(join(fromModule, 'package.json'))) return fromModule
+  const fromCwd = process.cwd()
+  if (existsSync(join(fromCwd, 'package.json'))) return fromCwd
+  return fromModule
+}
+
+function resolveIngestBundleUrl() {
+  const candidates = [
+    join(rootDir, 'ingest.bundle.mjs'),
+    join(projectRoot, 'server', 'corpus', 'ingest.bundle.mjs'),
+    join(process.cwd(), 'server', 'corpus', 'ingest.bundle.mjs'),
+  ]
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return pathToFileURL(candidate).href
+  }
+  throw new Error(
+    'No está ingest.bundle.mjs. Ejecuta `npm run bundle:corpus` (o predev/prestart) en el servidor.',
+  )
+}
 
 const REFRESH_MS = Number(process.env.CORPUS_REFRESH_MS ?? 5 * 60_000)
 const WINDOW_DAYS = 90
@@ -71,7 +95,7 @@ async function runIngest(force = false) {
       : []
 
     try {
-      const { runIngest: ingest } = await import('./ingest.bundle.mjs')
+      const { runIngest: ingest } = await import(resolveIngestBundleUrl())
       const snapshot = await ingest(previousCriticalIds)
       state.snapshot = snapshot
       state.status = 'ready'

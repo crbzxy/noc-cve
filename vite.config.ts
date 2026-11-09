@@ -1,7 +1,15 @@
 import react from '@vitejs/plugin-react'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { defineConfig, loadEnv, type Plugin, type ProxyOptions } from 'vite'
 import { upstreams } from './proxy.config.mjs'
+
+/** Import nativo (evita que Vite reescriba rutas a `.vite-temp`). */
+function importServerModule<T>(relativePath: string): Promise<T> {
+  const absolute = join(process.cwd(), relativePath)
+  return import(pathToFileURL(absolute).href) as Promise<T>
+}
 
 function writeProxyError(
   res: ServerResponse | undefined,
@@ -25,9 +33,9 @@ function writeProxyError(
 function authDevPlugin(): Plugin {
   const attach = (middlewares: { use: (fn: (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => void) => void }) => {
     middlewares.use((req, res, next) => {
-      void import('./server/auth.mjs' as string).then(async (mod: {
+      void importServerModule<{
         handleAuthRequest: (req: IncomingMessage, res: ServerResponse) => Promise<boolean>
-      }) => {
+      }>('server/auth.mjs').then(async (mod) => {
         const handled = await mod.handleAuthRequest(req, res)
         if (!handled) next()
       }).catch(next)
@@ -50,25 +58,22 @@ function corpusDevPlugin(): Plugin {
   return {
     name: 'noc-cve-corpus',
     configureServer(devServer) {
-      const storeImport = import('./server/corpus/store.mjs' as string) as Promise<{
+      // Ingesta directa a upstreams (sin loopback al propio Vite).
+      void importServerModule<{
         startCorpusWorker: (options: {
           startTimer?: boolean
           ingestOnBoot?: boolean
         }) => Promise<void>
-      }>
-
-      // Ingesta directa a upstreams (sin loopback al propio Vite).
-      void storeImport.then(async ({ startCorpusWorker }) => {
+      }>('server/corpus/store.mjs').then(async ({ startCorpusWorker }) => {
         await startCorpusWorker({ startTimer: true, ingestOnBoot: true })
       }).catch((error: unknown) => {
         console.error('[corpus] Worker dev no iniciado:', error)
       })
 
       devServer.middlewares.use((req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => {
-        const httpImport = import('./server/corpus/http.mjs' as string) as Promise<{
+        void importServerModule<{
           handleCorpusRequest: (req: IncomingMessage, res: ServerResponse) => boolean
-        }>
-        void httpImport.then(({ handleCorpusRequest }) => {
+        }>('server/corpus/http.mjs').then(({ handleCorpusRequest }) => {
           if (handleCorpusRequest(req, res)) return
           next()
         }).catch(next)
