@@ -3,13 +3,12 @@ import {
   isAppSourcesConfig,
   type AppSourcesConfig,
 } from './sources.schema'
-import { toRequestUrl } from '../lib/requestUrl'
 
 const CONFIG_URL = '/config/sources.json'
 
 export async function loadSourcesConfig(signal?: AbortSignal): Promise<AppSourcesConfig> {
   try {
-    const response = await fetch(toRequestUrl(CONFIG_URL), { signal })
+    const response = await fetch(CONFIG_URL, { signal })
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`)
     }
