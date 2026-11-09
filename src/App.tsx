@@ -1,5 +1,6 @@
 import FullscreenIcon from '@mui/icons-material/Fullscreen'
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit'
+import LogoutIcon from '@mui/icons-material/Logout'
 import MenuIcon from '@mui/icons-material/Menu'
 import MenuOpenIcon from '@mui/icons-material/MenuOpen'
 import RefreshIcon from '@mui/icons-material/Refresh'
@@ -204,6 +205,16 @@ export default function App() {
           <Tooltip title={fs ? 'Salir de pantalla completa' : 'Modo pared'}>
             <IconButton onClick={toggleFs} aria-label="Pantalla completa" size="small">
               {fs ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Cerrar sesión">
+            <IconButton
+              size="small"
+              aria-label="Cerrar sesión"
+              component="a"
+              href="/api/auth/logout"
+            >
+              <LogoutIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </Stack>

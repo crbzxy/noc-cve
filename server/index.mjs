@@ -8,6 +8,7 @@ import { createServer as createHttpsServer } from 'node:https'
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { requireHttpsTarget, upstreams } from '../proxy.config.mjs'
+import { authConfigFingerprint, handleAuthRequest } from './auth.mjs'
 import { handleCorpusRequest } from './corpus/http.mjs'
 import { startCorpusWorker } from './corpus/store.mjs'
 
@@ -147,11 +148,21 @@ async function serveStatic(req, res) {
   res.writeHead(200, { 'content-type': mime[extname(file)] ?? 'application/octet-stream' }).end(data)
 }
 
-function onRequest(req, res) {
-  if (handleCorpusRequest(req, res)) return
-  const match = Object.entries(upstreams).find(([p]) => req.url === p || req.url.startsWith(p + '/') || req.url.startsWith(p + '?'))
-  if (match) return proxy(req, res, match[0], match[1])
-  serveStatic(req, res).catch(() => res.writeHead(500).end())
+async function onRequest(req, res) {
+  try {
+    if (await handleAuthRequest(req, res)) return
+    if (handleCorpusRequest(req, res)) return
+    const match = Object.entries(upstreams).find(([p]) => (
+      req.url === p || req.url.startsWith(`${p}/`) || req.url.startsWith(`${p}?`)
+    ))
+    if (match) {
+      await proxy(req, res, match[0], match[1])
+      return
+    }
+    await serveStatic(req, res)
+  } catch {
+    if (!res.headersSent) res.writeHead(500).end()
+  }
 }
 
 function redirectToHttps(req, res) {
@@ -172,6 +183,7 @@ const server = useTls
 server.listen(port, () => {
   const scheme = useTls ? 'https' : 'http'
   console.log(`NOC CVE dashboard → ${scheme}://localhost:${port}${useTls ? ` (TLS: ${tls.source})` : ''}`)
+  console.log(`[auth] Vista privada activa (user fingerprint ${authConfigFingerprint()})`)
   startCorpusWorker({ startTimer: true, ingestOnBoot: true }).catch((error) => {
     console.error('[corpus] No se pudo iniciar worker:', error)
   })

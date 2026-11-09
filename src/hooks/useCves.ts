@@ -13,6 +13,7 @@ import {
 import { applyLibraryMatches } from '../lib/matchLibraries'
 import { applyTechnologyTags } from '../lib/matchTechnologies'
 import { packageKeyOf, resolveAppStackCached, type ResolvedAppStack } from '../lib/resolveAppStack'
+import { compileSearchPattern, textMatchesSearch } from '../lib/searchText'
 import { fetchCorpus, refreshCorpus } from '../sources/corpus'
 import { fetchEpss } from '../sources/epss'
 import { fetchOsvDetails, fetchOsvHits } from '../sources/osv'
@@ -336,6 +337,18 @@ export function useCves() {
   }
 }
 
+function buildSearchHaystack(record: CveRecord): string {
+  return [
+    record.id,
+    record.title ?? '',
+    record.description,
+    record.aliases.join(' '),
+    record.packages.join(' '),
+    record.technologies.join(' '),
+    record.matchedLibraries.join(' '),
+  ].join('\n')
+}
+
 function filterCveRecords(
   records: CveRecord[],
   options: {
@@ -352,6 +365,7 @@ function filterCveRecords(
   },
 ): CveRecord[] {
   const q = options.search.trim().toLowerCase()
+  const searchPattern = q ? compileSearchPattern(q) : null
   const appTechSet = options.appStack ? new Set(options.appStack.techIds) : null
   const techSet = !appTechSet && !options.techAll && options.technologies.length > 0
     ? new Set(options.technologies)
@@ -376,16 +390,12 @@ function filterCveRecords(
     }
 
     if (options.minEpss > 0 && (c.epss?.score ?? 0) < options.minEpss) return false
-    if (!q) return true
-    return (
-      c.id.toLowerCase().includes(q)
-      || (c.title ?? '').toLowerCase().includes(q)
-      || c.description.toLowerCase().includes(q)
-      || c.aliases.some((a) => a.toLowerCase().includes(q))
-      || c.packages.some((p) => p.toLowerCase().includes(q))
-      || c.technologies.some((t) => t.includes(q))
-      || c.matchedLibraries.some((lib) => lib.toLowerCase().includes(q))
-    )
+    if (!searchPattern) return true
+    // CVE id / alias: substring (p. ej. 2026-112); resto: límite de palabra.
+    if (c.id.toLowerCase().includes(q) || c.aliases.some((alias) => alias.toLowerCase().includes(q))) {
+      return true
+    }
+    return textMatchesSearch(buildSearchHaystack(c), searchPattern)
   })
 
   filtered.sort((a, b) => riskScore(b) - riskScore(a))

@@ -21,6 +21,30 @@ function writeProxyError(
   res.end(payload)
 }
 
+/** Login + cookie de sesión en Vite (misma puerta que producción). */
+function authDevPlugin(): Plugin {
+  const attach = (middlewares: { use: (fn: (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => void) => void }) => {
+    middlewares.use((req, res, next) => {
+      void import('./server/auth.mjs' as string).then(async (mod: {
+        handleAuthRequest: (req: IncomingMessage, res: ServerResponse) => Promise<boolean>
+      }) => {
+        const handled = await mod.handleAuthRequest(req, res)
+        if (!handled) next()
+      }).catch(next)
+    })
+  }
+
+  return {
+    name: 'noc-cve-auth',
+    configureServer(devServer) {
+      attach(devServer.middlewares)
+    },
+    configurePreviewServer(previewServer) {
+      attach(previewServer.middlewares)
+    },
+  }
+}
+
 /** Expone /api/corpus* en Vite dev con el mismo store de producción. */
 function corpusDevPlugin(): Plugin {
   return {
@@ -76,7 +100,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [react(), corpusDevPlugin()],
+    plugins: [react(), authDevPlugin(), corpusDevPlugin()],
     server: { host: '127.0.0.1', proxy, port: 5173 },
     preview: { host: '127.0.0.1', proxy },
   }

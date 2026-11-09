@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*.local
 
 # Corpus snapshot (grande; se regenera en el servidor)
 data/corpus.json
