@@ -5,24 +5,40 @@ type MatchableCve = Pick<CveRecord, 'id' | 'title' | 'description' | 'packages' 
 
 export interface CompiledTechMatcher {
   id: string
-  keywords: string[]
+  patterns: RegExp[]
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** Keyword corta/simple → boundary; frases o con puntuación → includes literal escapado. */
+function compileKeywordPattern(keyword: string): RegExp {
+  const escaped = escapeRegex(keyword)
+  const useBoundary = !/[\s./_+-]/.test(keyword)
+  if (useBoundary) {
+    return new RegExp(`(^|[^a-z0-9])${escaped}(?=[^a-z0-9]|$)`, 'i')
+  }
+  return new RegExp(escaped, 'i')
 }
 
 /** Precompila keywords (lowercase, largas primero) una sola vez por config. */
 export function compileTechnologyMatchers(
   technologies: TechnologyConfig[],
 ): CompiledTechMatcher[] {
-  return technologies.map((tech) => ({
-    id: tech.id,
-    keywords: tech.keywords
+  return technologies.map((tech) => {
+    const keywords = tech.keywords
       .map((keyword) => keyword.toLowerCase().trim())
       .filter(Boolean)
-      .sort((a, b) => b.length - a.length),
-  }))
+      .sort((a, b) => b.length - a.length)
+    return {
+      id: tech.id,
+      patterns: keywords.map(compileKeywordPattern),
+    }
+  })
 }
 
 function buildHaystack(record: MatchableCve): string {
-  // Descripción truncada: basta para keywords y evita escanear textos enormes
   const description = record.description.length > 480
     ? record.description.slice(0, 480)
     : record.description
@@ -45,11 +61,8 @@ export function matchTechnologies(
   const haystack = buildHaystack(record)
   const hits: string[] = []
   for (const matcher of matchers) {
-    for (const keyword of matcher.keywords) {
-      if (haystack.includes(keyword)) {
-        hits.push(matcher.id)
-        break
-      }
+    if (matcher.patterns.some((pattern) => pattern.test(haystack))) {
+      hits.push(matcher.id)
     }
   }
   return hits

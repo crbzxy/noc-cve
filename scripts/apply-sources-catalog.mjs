@@ -1,0 +1,696 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const configPath = join(root, 'config', 'sources.json')
+
+/** Stack TEL: va primero en el listado. */
+const TEL_MAP = {
+  java: 'Java / Spring',
+  spring: 'Java / Spring',
+  gitlab: 'Git / CI',
+  'github-actions': 'Git / CI',
+  cicd: 'Git / CI',
+  jenkins: 'Git / CI',
+  nexus: 'Git / CI',
+  react: 'React',
+  nginx: 'Nginx',
+  tomcat: 'Tomcat',
+  http: 'Apache HTTP',
+  wso2: 'WSO2',
+}
+
+const TEL_ORDER = [
+  'Java / Spring',
+  'Git / CI',
+  'React',
+  'Nginx',
+  'Tomcat',
+  'Apache HTTP',
+  'WSO2',
+]
+
+const STACK_BY_ID = {
+  php: 'Lenguajes y plataformas backend',
+  python: 'Lenguajes y plataformas backend',
+  django: 'Lenguajes y plataformas backend',
+  flask: 'Lenguajes y plataformas backend',
+  fastapi: 'Lenguajes y plataformas backend',
+  laravel: 'Lenguajes y plataformas backend',
+  symfony: 'Lenguajes y plataformas backend',
+  nodejs: 'Lenguajes y plataformas backend',
+  express: 'Lenguajes y plataformas backend',
+  nestjs: 'Lenguajes y plataformas backend',
+  magento: 'Lenguajes y plataformas backend',
+  wordpress: 'Lenguajes y plataformas backend',
+  codeigniter: 'Lenguajes y plataformas backend',
+  'react-native': 'Móvil',
+  htmlcss: 'Frontend web',
+  jamstack: 'Frontend web',
+  lamp: 'Servidores web y middleware',
+  linux: 'Cloud e infraestructura',
+  'linux-kernel': 'Cloud e infraestructura',
+  windows: 'Cloud e infraestructura',
+  openssl: 'Cloud e infraestructura',
+  mysql: 'Bases de datos',
+  community: 'Bases de datos',
+  postgres: 'Bases de datos',
+  mongodb: 'Bases de datos',
+  elasticsearch: 'Bases de datos',
+  redis: 'Bases de datos',
+  docker: 'Cloud e infraestructura',
+  kubernetes: 'Cloud e infraestructura',
+  rancher: 'Cloud e infraestructura',
+  helm: 'CI/CD y herramientas',
+  argocd: 'CI/CD y herramientas',
+  traefik: 'Servidores web y middleware',
+  haproxy: 'Servidores web y middleware',
+  varnish: 'Servidores web y middleware',
+  'cdn-edge': 'Cloud e infraestructura',
+  cloudflare: 'Cloud e infraestructura',
+  akamai: 'Cloud e infraestructura',
+  'network-security': 'Cloud e infraestructura',
+  fortinet: 'Cloud e infraestructura',
+  paloalto: 'Cloud e infraestructura',
+  cisco: 'Cloud e infraestructura',
+  checkpoint: 'Cloud e infraestructura',
+  sophos: 'Cloud e infraestructura',
+  sonicwall: 'Cloud e infraestructura',
+  ivanti: 'Cloud e infraestructura',
+  citrix: 'Cloud e infraestructura',
+  f5: 'Cloud e infraestructura',
+  vpn: 'Cloud e infraestructura',
+  vmware: 'Cloud e infraestructura',
+  cloud: 'Cloud e infraestructura',
+  aws: 'Cloud e infraestructura',
+  azure: 'Cloud e infraestructura',
+  gcp: 'Cloud e infraestructura',
+  terraform: 'Cloud e infraestructura',
+  ansible: 'Cloud e infraestructura',
+  n8n: 'CI/CD y herramientas',
+  keycloak: 'Integración y mensajería',
+  kafka: 'Integración y mensajería',
+  rabbitmq: 'Integración y mensajería',
+  mqtt: 'Integración y mensajería',
+  prometheus: 'Cloud e infraestructura',
+  sap: 'ERP y plataformas',
+}
+
+const STACK_ORDER = [
+  'Lenguajes y plataformas backend',
+  'Frontend web',
+  'Móvil',
+  'Bases de datos',
+  'Integración y mensajería',
+  'ERP y plataformas',
+  'Cloud e infraestructura',
+  'CI/CD y herramientas',
+  'Servidores web y middleware',
+]
+
+const incoming = {
+  sources: [
+    {
+      id: 'nvd',
+      label: 'NVD (NIST)',
+      enabled: true,
+      role: 'list',
+      proxyPrefix: '/api/nvd',
+      baseUrl: 'https://services.nvd.nist.gov',
+      path: '/rest/json/cves/2.0',
+      authEnv: 'NVD_API_KEY',
+    },
+    {
+      id: 'github',
+      label: 'GitHub Advisories',
+      enabled: true,
+      role: 'list',
+      proxyPrefix: '/api/github',
+      baseUrl: 'https://api.github.com',
+      path: '/advisories',
+      authEnv: 'GITHUB_TOKEN',
+    },
+    {
+      id: 'kev',
+      label: 'CISA KEV',
+      enabled: true,
+      role: 'enrich',
+      proxyPrefix: '/api/kev',
+      baseUrl: 'https://www.cisa.gov',
+      path: '/sites/default/files/feeds/known_exploited_vulnerabilities.json',
+    },
+    {
+      id: 'epss',
+      label: 'FIRST EPSS',
+      enabled: true,
+      role: 'score',
+      proxyPrefix: '/api/epss',
+      baseUrl: 'https://api.first.org',
+      path: '/data/v1/epss',
+    },
+  ],
+  technologies: [
+    {
+      id: 'java',
+      label: 'Java',
+      category: 'language',
+      keywords: ['java', 'jdk', 'openjdk', 'jvm', 'maven', 'gradle', 'temurin', 'adoptium', 'corretto'],
+      related: ['spring', 'linux', 'docker', 'sap', 'tomcat', 'kafka', 'jenkins'],
+    },
+    {
+      id: 'spring',
+      label: 'Spring',
+      category: 'framework',
+      keywords: ['spring', 'spring boot', 'springframework', 'spring framework', 'spring security', 'spring cloud'],
+      related: ['java', 'tomcat', 'kafka', 'keycloak', 'mqtt'],
+    },
+    {
+      id: 'react',
+      label: 'React',
+      category: 'framework',
+      keywords: ['react', 'react.js', 'reactjs', 'next.js', 'nextjs', 'create-react-app'],
+      related: ['nodejs', 'htmlcss', 'jamstack', 'react-native'],
+    },
+    {
+      id: 'http',
+      label: 'HTTP / Apache',
+      keywords: ['apache httpd', 'httpd', 'http server', 'apache'],
+      related: ['linux', 'nginx', 'lamp', 'sap', 'tomcat', 'openssl'],
+    },
+    {
+      id: 'tomcat',
+      label: 'Apache Tomcat',
+      category: 'framework',
+      keywords: ['tomcat', 'apache tomcat', 'catalina', 'jetty', 'undertow'],
+      related: ['java', 'spring', 'http'],
+    },
+    {
+      id: 'nginx',
+      label: 'Nginx',
+      keywords: ['nginx', 'nginx plus', 'openresty'],
+      related: ['linux', 'docker', 'http', 'kubernetes', 'cloudflare'],
+    },
+    {
+      id: 'linux',
+      label: 'Linux',
+      keywords: ['linux', 'ubuntu', 'debian', 'centos', 'rhel', 'redhat', 'rocky linux', 'almalinux', 'amazon linux', 'fedora', 'suse', 'sles'],
+      related: ['linux-kernel', 'docker', 'nginx', 'http', 'kubernetes', 'openssl'],
+      hub: true,
+    },
+    {
+      id: 'linux-kernel',
+      label: 'Linux Kernel',
+      keywords: ['linux kernel', 'kernel.org', 'linux-kernel', 'kernel vulnerability', 'linux kernel module', 'kworker', 'netfilter', 'io_uring', 'cve-linux'],
+      related: ['linux'],
+    },
+    {
+      id: 'windows',
+      label: 'Windows Server / AD',
+      keywords: ['windows server', 'microsoft windows', 'active directory', 'kerberos', 'ntlm', 'iis', 'internet information services', 'exchange server', 'sharepoint server', 'remote desktop', 'rdp'],
+      related: ['keycloak', 'vmware', 'network-security'],
+    },
+    {
+      id: 'sap',
+      label: 'SAP',
+      keywords: ['sap', 'sap se', 'sap ag', 'sap netweaver', 'netweaver', 'sap hana', 'hana', 's/4hana', 's4hana', 'sap s/4', 'sap erp', 'sap basis', 'sap abap', 'abap', 'sap kernel', 'sap gui', 'sap fiori', 'fiori', 'sap gateway', 'sap business one', 'sap b1', 'sap commerce', 'hybris', 'sap crm', 'sap bw', 'sap bi', 'sap solution manager', 'sap j2ee', 'sapwebdisp', 'sap dispatcher', 'sap router', 'icm', 'sap maxdb', 'sybase', 'sap ase', 'sap cpi', 'sap btp', 'sap cloud integration'],
+      related: ['java', 'http', 'linux', 'docker', 'mysql', 'postgres', 'redis', 'nginx', 'windows', 'network-security'],
+      hub: true,
+    },
+    {
+      id: 'magento',
+      label: 'Magento',
+      category: 'framework',
+      keywords: ['magento', 'adobe commerce', 'magento open source', 'magento community', 'magento ce', 'magento os', 'mage-os'],
+      related: ['php', 'mysql', 'http', 'redis', 'linux', 'varnish', 'elasticsearch', 'nginx', 'cloudflare'],
+      hub: true,
+    },
+    {
+      id: 'php',
+      label: 'PHP',
+      category: 'language',
+      keywords: ['php', 'composer'],
+      related: ['mysql', 'http', 'linux', 'magento', 'lamp', 'wordpress', 'codeigniter', 'laravel', 'symfony'],
+    },
+    {
+      id: 'python',
+      label: 'Python',
+      category: 'language',
+      keywords: ['python', 'pip', 'pypi', 'gunicorn', 'uvicorn'],
+      related: ['linux', 'docker', 'postgres', 'redis', 'nginx', 'ansible', 'django', 'flask', 'fastapi'],
+    },
+    {
+      id: 'django',
+      label: 'Django',
+      category: 'framework',
+      keywords: ['django', 'django rest framework', 'djangoproject'],
+      related: ['python', 'postgres', 'mysql'],
+    },
+    {
+      id: 'flask',
+      label: 'Flask',
+      category: 'framework',
+      keywords: ['flask'],
+      related: ['python'],
+    },
+    {
+      id: 'fastapi',
+      label: 'FastAPI',
+      category: 'framework',
+      keywords: ['fastapi', 'starlette'],
+      related: ['python'],
+    },
+    {
+      id: 'laravel',
+      label: 'Laravel',
+      category: 'framework',
+      keywords: ['laravel', 'illuminate', 'lumen'],
+      related: ['php', 'mysql', 'redis'],
+    },
+    {
+      id: 'symfony',
+      label: 'Symfony',
+      category: 'framework',
+      keywords: ['symfony', 'symfony framework'],
+      related: ['php', 'mysql'],
+    },
+    {
+      id: 'nodejs',
+      label: 'Node.js',
+      category: 'language',
+      keywords: ['node.js', 'nodejs', 'npm'],
+      related: ['react', 'redis', 'docker', 'linux', 'nginx', 'n8n', 'mongodb', 'express'],
+    },
+    {
+      id: 'express',
+      label: 'Express',
+      category: 'framework',
+      keywords: ['express', 'express.js', 'expressjs'],
+      related: ['nodejs'],
+    },
+    {
+      id: 'nestjs',
+      label: 'NestJS',
+      category: 'framework',
+      keywords: ['nestjs', 'nest.js'],
+      related: ['nodejs', 'express'],
+    },
+    {
+      id: 'react-native',
+      label: 'React Native',
+      category: 'framework',
+      keywords: ['react native', 'react-native', 'expo', 'metro bundler', 'hermes engine'],
+      related: ['react', 'nodejs'],
+    },
+    {
+      id: 'htmlcss',
+      label: 'HTML / CSS',
+      category: 'language',
+      keywords: ['html', 'html5', 'css', 'css3', 'dom xss', 'cross-site scripting'],
+      related: ['react', 'jamstack'],
+    },
+    {
+      id: 'jamstack',
+      label: 'JAMstack',
+      category: 'framework',
+      keywords: ['jamstack', 'gatsby', 'hugo', 'jekyll', 'eleventy', 'astro', 'netlify', 'vercel', 'nuxt'],
+      related: ['react', 'nodejs', 'htmlcss', 'nginx', 'cloudflare'],
+      hub: true,
+    },
+    {
+      id: 'lamp',
+      label: 'LAMP',
+      keywords: ['lamp', 'linux apache', 'mod_php', 'libapache2'],
+      related: ['linux', 'http', 'mysql', 'php'],
+      hub: true,
+    },
+    {
+      id: 'wordpress',
+      label: 'WordPress',
+      category: 'framework',
+      keywords: ['wordpress', 'wp-admin', 'woocommerce', 'wordpress plugin', 'wordpress theme', 'wp rest api'],
+      related: ['php', 'mysql', 'lamp', 'nginx', 'cloudflare'],
+    },
+    {
+      id: 'codeigniter',
+      label: 'CodeIgniter',
+      category: 'framework',
+      keywords: ['codeigniter', 'codeigniter4', 'codeigniter 4'],
+      related: ['php', 'mysql', 'lamp'],
+    },
+    {
+      id: 'openssl',
+      label: 'OpenSSL / OpenSSH',
+      keywords: ['openssl', 'libssl', 'libcrypto', 'openssh', 'sshd', 'libssh', 'gnutls', 'boringssl'],
+      related: ['linux', 'nginx', 'http'],
+    },
+    {
+      id: 'mysql',
+      label: 'MySQL',
+      keywords: ['mysql', 'mariadb', 'mysql community', 'mysql server', 'oracle mysql'],
+      related: ['lamp', 'magento', 'php', 'linux'],
+    },
+    {
+      id: 'community',
+      label: 'Community Editions',
+      keywords: ['community edition', 'open source edition', 'opensource', 'magento community', 'mysql community', 'openjdk', 'postgresql community'],
+      related: ['magento', 'mysql', 'java'],
+    },
+    {
+      id: 'postgres',
+      label: 'PostgreSQL',
+      keywords: ['postgresql', 'postgres'],
+      related: ['linux', 'docker', 'python'],
+    },
+    {
+      id: 'mongodb',
+      label: 'MongoDB',
+      keywords: ['mongodb', 'mongoose', 'mongod', 'mongo shell'],
+      related: ['nodejs', 'docker', 'linux'],
+    },
+    {
+      id: 'elasticsearch',
+      label: 'Elasticsearch / OpenSearch',
+      keywords: ['elasticsearch', 'opensearch', 'kibana', 'logstash', 'elastic stack', 'opensearch dashboards'],
+      related: ['magento', 'java', 'docker', 'kubernetes'],
+    },
+    {
+      id: 'docker',
+      label: 'Docker',
+      keywords: ['docker', 'containerd', 'runc', 'buildkit', 'moby', 'docker desktop'],
+      related: ['linux', 'nginx', 'redis', 'kubernetes'],
+    },
+    {
+      id: 'kubernetes',
+      label: 'Kubernetes',
+      keywords: ['kubernetes', 'k8s', 'kubelet', 'kube-apiserver', 'kube-proxy', 'kubectl', 'etcd', 'cri-o', 'ingress-nginx', 'ingress nginx', 'openshift', 'eks', 'aks', 'gke', 'coredns'],
+      related: ['docker', 'linux', 'rancher', 'helm', 'argocd', 'nginx', 'traefik', 'prometheus'],
+      hub: true,
+    },
+    {
+      id: 'rancher',
+      label: 'Rancher (SUSE)',
+      keywords: ['rancher', 'rke2', 'rke', 'k3s', 'longhorn', 'rancher fleet', 'neuvector', 'rancher desktop', 'harvester'],
+      related: ['kubernetes', 'docker', 'linux', 'helm'],
+    },
+    {
+      id: 'helm',
+      label: 'Helm',
+      keywords: ['helm chart', 'helm v3', 'helm.sh', 'kubernetes helm'],
+      related: ['kubernetes', 'rancher', 'argocd'],
+    },
+    {
+      id: 'argocd',
+      label: 'Argo CD / Flux',
+      keywords: ['argo cd', 'argocd', 'argo workflows', 'argo rollouts', 'fluxcd', 'flux cd'],
+      related: ['kubernetes', 'helm', 'cicd'],
+    },
+    {
+      id: 'traefik',
+      label: 'Traefik',
+      keywords: ['traefik'],
+      related: ['kubernetes', 'docker'],
+    },
+    {
+      id: 'haproxy',
+      label: 'HAProxy',
+      keywords: ['haproxy'],
+      related: ['linux', 'kubernetes', 'network-security'],
+    },
+    {
+      id: 'varnish',
+      label: 'Varnish',
+      keywords: ['varnish', 'varnish cache', 'varnishd'],
+      related: ['magento', 'nginx', 'cdn-edge'],
+    },
+    {
+      id: 'redis',
+      label: 'Redis',
+      keywords: ['redis', 'valkey', 'keydb'],
+      related: ['linux', 'docker', 'magento'],
+    },
+    {
+      id: 'cdn-edge',
+      label: 'CDN / Edge',
+      keywords: ['cdn', 'content delivery network', 'edge computing', 'reverse proxy', 'ddos protection'],
+      related: ['cloudflare', 'varnish', 'akamai', 'nginx'],
+      hub: true,
+    },
+    {
+      id: 'cloudflare',
+      label: 'Cloudflare',
+      keywords: ['cloudflare', 'cloudflared', 'cloudflare tunnel', 'cloudflare workers', 'workerd', 'wrangler', 'miniflare', 'pingora', 'cloudflare warp', 'cloudflare zero trust'],
+      related: ['cdn-edge', 'network-security', 'jamstack', 'nginx', 'nodejs'],
+    },
+    {
+      id: 'akamai',
+      label: 'Akamai',
+      keywords: ['akamai', 'linode', 'akamai edgeworkers'],
+      related: ['cdn-edge'],
+    },
+    {
+      id: 'network-security',
+      label: 'Firewall / Perímetro',
+      keywords: ['firewall', 'next-generation firewall', 'ngfw', 'utm', 'ssl vpn', 'ssl-vpn', 'ipsec vpn', 'web application firewall', 'waf', 'secure web gateway'],
+      related: ['fortinet', 'paloalto', 'cisco', 'checkpoint', 'sophos', 'sonicwall', 'ivanti', 'citrix', 'f5', 'cloudflare', 'vpn'],
+      hub: true,
+    },
+    {
+      id: 'fortinet',
+      label: 'Fortinet',
+      keywords: ['fortinet', 'fortigate', 'fortios', 'fortiproxy', 'fortimanager', 'fortianalyzer', 'fortiweb', 'fortiswitch', 'forticlient', 'fortisiem', 'fortiadc', 'fortimail', 'fortisandbox', 'fortinac', 'fortiap', 'fortiedr', 'fortiauthenticator', 'fortiswitchmanager'],
+      related: ['network-security', 'vpn'],
+    },
+    {
+      id: 'paloalto',
+      label: 'Palo Alto Networks',
+      keywords: ['palo alto networks', 'pan-os', 'globalprotect', 'panorama', 'prisma access', 'prisma cloud', 'cortex xdr', 'cortex xsoar', 'expedition'],
+      related: ['network-security', 'vpn'],
+    },
+    {
+      id: 'cisco',
+      label: 'Cisco',
+      keywords: ['cisco', 'cisco asa', 'adaptive security appliance', 'firepower', 'firepower threat defense', 'cisco ios', 'ios xe', 'ios xr', 'nx-os', 'anyconnect', 'cisco secure client', 'cisco ise', 'meraki', 'cisco smart licensing'],
+      related: ['network-security', 'vpn'],
+    },
+    {
+      id: 'checkpoint',
+      label: 'Check Point',
+      keywords: ['check point', 'checkpoint', 'quantum security gateway', 'check point gaia', 'harmony endpoint', 'cloudguard'],
+      related: ['network-security', 'vpn'],
+    },
+    {
+      id: 'sophos',
+      label: 'Sophos',
+      keywords: ['sophos', 'sophos firewall', 'sophos xg', 'sfos', 'sophos utm', 'sophos central'],
+      related: ['network-security'],
+    },
+    {
+      id: 'sonicwall',
+      label: 'SonicWall',
+      keywords: ['sonicwall', 'sonicos', 'sma 100', 'sma 1000', 'netextender'],
+      related: ['network-security', 'vpn'],
+    },
+    {
+      id: 'ivanti',
+      label: 'Ivanti',
+      keywords: ['ivanti', 'ivanti connect secure', 'pulse secure', 'pulse connect secure', 'ivanti policy secure', 'ivanti epmm', 'mobileiron', 'ivanti neurons'],
+      related: ['network-security', 'vpn'],
+    },
+    {
+      id: 'citrix',
+      label: 'Citrix / NetScaler',
+      keywords: ['citrix', 'netscaler', 'citrix adc', 'citrix gateway', 'citrix workspace', 'xenapp', 'xendesktop'],
+      related: ['network-security', 'vpn', 'windows'],
+    },
+    {
+      id: 'f5',
+      label: 'F5 BIG-IP',
+      keywords: ['f5 networks', 'big-ip', 'bigip', 'f5 big-ip', 'tmui', 'big-ip apm', 'nginx plus'],
+      related: ['network-security', 'nginx'],
+    },
+    {
+      id: 'vpn',
+      label: 'VPN',
+      keywords: ['vpn', 'openvpn', 'wireguard', 'strongswan', 'libreswan', 'tailscale', 'zerotier'],
+      related: ['network-security', 'linux'],
+    },
+    {
+      id: 'vmware',
+      label: 'VMware / Broadcom',
+      keywords: ['vmware', 'esxi', 'vcenter', 'vsphere', 'vmware workstation', 'vmware tools', 'nsx', 'aria operations', 'horizon'],
+      related: ['linux', 'windows', 'kubernetes'],
+    },
+    {
+      id: 'cloud',
+      label: 'Cloud Pública',
+      keywords: ['cloud', 'iaas', 'paas', 'serverless'],
+      related: ['aws', 'azure', 'gcp', 'kubernetes', 'terraform'],
+      hub: true,
+    },
+    {
+      id: 'aws',
+      label: 'AWS',
+      keywords: ['aws', 'amazon web services', 'amazon s3', 'aws lambda', 'amazon ec2', 'aws sdk', 'aws iam', 'amazon cognito'],
+      related: ['cloud', 'kubernetes', 'terraform'],
+    },
+    {
+      id: 'azure',
+      label: 'Microsoft Azure',
+      keywords: ['azure', 'microsoft entra', 'azure ad', 'azure devops', 'azure functions', 'azure sdk'],
+      related: ['cloud', 'windows', 'kubernetes'],
+    },
+    {
+      id: 'gcp',
+      label: 'Google Cloud',
+      keywords: ['google cloud', 'gcp', 'cloud run', 'cloud functions', 'firebase', 'google kubernetes engine'],
+      related: ['cloud', 'kubernetes'],
+    },
+    {
+      id: 'terraform',
+      label: 'Terraform / OpenTofu',
+      keywords: ['terraform', 'opentofu', 'hashicorp', 'vault', 'consul', 'nomad', 'packer'],
+      related: ['cloud', 'kubernetes', 'ansible'],
+    },
+    {
+      id: 'ansible',
+      label: 'Ansible',
+      keywords: ['ansible', 'ansible tower', 'awx', 'ansible automation platform'],
+      related: ['python', 'linux', 'terraform'],
+    },
+    {
+      id: 'cicd',
+      label: 'CI/CD',
+      keywords: ['ci/cd', 'continuous integration', 'build pipeline', 'artifact repository'],
+      related: ['jenkins', 'gitlab', 'github-actions', 'argocd', 'n8n', 'nexus'],
+      hub: true,
+    },
+    {
+      id: 'jenkins',
+      label: 'Jenkins',
+      keywords: ['jenkins', 'jenkins plugin', 'cloudbees'],
+      related: ['java', 'cicd', 'docker', 'kubernetes'],
+    },
+    {
+      id: 'gitlab',
+      label: 'GitLab',
+      keywords: ['gitlab', 'gitlab ce', 'gitlab ee', 'gitlab runner'],
+      related: ['cicd', 'docker', 'kubernetes'],
+    },
+    {
+      id: 'github-actions',
+      label: 'GitHub Actions',
+      keywords: ['github actions', 'github workflow', 'actions runner', 'github enterprise server'],
+      related: ['cicd', 'nodejs'],
+    },
+    {
+      id: 'nexus',
+      label: 'Nexus / Artifactory / SonarQube',
+      keywords: ['sonatype nexus', 'nexus repository', 'jfrog', 'artifactory', 'sonarqube', 'harbor registry'],
+      related: ['cicd', 'java', 'docker'],
+    },
+    {
+      id: 'n8n',
+      label: 'n8n',
+      keywords: ['n8n'],
+      related: ['nodejs', 'cicd', 'docker'],
+    },
+    {
+      id: 'keycloak',
+      label: 'Keycloak / IAM',
+      keywords: ['keycloak', 'oauth2', 'openid connect', 'oidc', 'saml', 'okta', 'auth0'],
+      related: ['java', 'spring', 'windows'],
+    },
+    {
+      id: 'kafka',
+      label: 'Kafka',
+      keywords: ['apache kafka', 'kafka', 'kafka connect', 'confluent', 'zookeeper', 'redpanda'],
+      related: ['java', 'spring', 'kubernetes'],
+    },
+    {
+      id: 'rabbitmq',
+      label: 'RabbitMQ',
+      keywords: ['rabbitmq', 'amqp', 'activemq', 'artemis'],
+      related: ['java', 'spring', 'docker', 'magento'],
+    },
+    {
+      id: 'mqtt',
+      label: 'MQTT',
+      keywords: ['mqtt', 'mosquitto', 'emqx', 'hivemq', 'eclipse paho', 'vernemq'],
+      related: ['spring', 'java', 'nodejs', 'docker'],
+    },
+    {
+      id: 'prometheus',
+      label: 'Prometheus / Grafana',
+      keywords: ['prometheus', 'grafana', 'loki', 'alertmanager', 'node_exporter', 'zabbix', 'datadog agent'],
+      related: ['kubernetes', 'docker', 'linux', 'elasticsearch'],
+    },
+  ],
+  defaults: {
+    stackOnly: true,
+    sortBy: 'risk',
+    sortDir: 'desc',
+  },
+}
+
+const hasWso2 = incoming.technologies.some((tech) => tech.id === 'wso2')
+if (!hasWso2) {
+  incoming.technologies.push({
+    id: 'wso2',
+    label: 'WSO2',
+    keywords: [
+      'wso2', 'wso2 api manager', 'wso2 identity server', 'wso2 ei',
+      'wso2 micro integrator', 'wso2 enterprise integrator',
+    ],
+    related: ['java', 'http', 'tomcat', 'keycloak'],
+  })
+}
+
+const technologies = incoming.technologies.map((tech) => {
+  const telSubgroup = TEL_MAP[tech.id]
+  if (telSubgroup) {
+    return { ...tech, group: 'TEL', subgroup: telSubgroup }
+  }
+  return {
+    ...tech,
+    subgroup: STACK_BY_ID[tech.id] || 'General',
+  }
+})
+
+technologies.sort((a, b) => {
+  const aTel = a.group === 'TEL' ? 0 : 1
+  const bTel = b.group === 'TEL' ? 0 : 1
+  if (aTel !== bTel) return aTel - bTel
+  if (a.group === 'TEL' && b.group === 'TEL') {
+    const sa = TEL_ORDER.indexOf(a.subgroup)
+    const sb = TEL_ORDER.indexOf(b.subgroup)
+    if (sa !== sb) return sa - sb
+    return a.label.localeCompare(b.label, 'es')
+  }
+  const sa = STACK_ORDER.indexOf(a.subgroup)
+  const sb = STACK_ORDER.indexOf(b.subgroup)
+  if (sa !== sb) return (sa === -1 ? 99 : sa) - (sb === -1 ? 99 : sb)
+  return a.label.localeCompare(b.label, 'es')
+})
+
+const output = {
+  sources: incoming.sources,
+  technologies,
+  defaults: incoming.defaults,
+}
+
+writeFileSync(configPath, `${JSON.stringify(output, null, 2)}\n`)
+
+const tel = technologies.filter((tech) => tech.group === 'TEL')
+console.log(`Total: ${technologies.length}`)
+console.log(`TEL primero: ${tel.length}`)
+for (const tech of tel) console.log(`  ${tech.subgroup} > ${tech.id}`)
+console.log(`Resto: ${technologies.length - tel.length}`)
+
+// Keep existing file readable for debugging
+try {
+  const previous = JSON.parse(readFileSync(configPath, 'utf8'))
+  void previous
+} catch {
+  // ignore
+}

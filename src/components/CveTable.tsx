@@ -8,7 +8,7 @@ import { es } from 'date-fns/locale'
 import { useMemo, useState } from 'react'
 import { useSourcesConfig } from '../hooks/useSourcesConfig'
 import { riskScore } from '../lib/aggregate'
-import { MONO } from '../theme'
+import { KEV_COLOR, MONO, SEVERITY_COLOR } from '../theme'
 import type { CveRecord, SourceId } from '../types'
 import { SeverityChip } from './SeverityChip'
 
@@ -49,45 +49,66 @@ export function CveTable({ rows, onSelect }: { rows: CveRecord[]; onSelect: (c: 
   }, [rows, sort, dir])
 
   const visible = sorted.slice(page * perPage, page * perPage + perPage)
-  const head = (key: SortKey, label: string, align: 'left' | 'right' = 'left') => (
+  const head = (
+    key: SortKey,
+    label: string,
+    align: 'left' | 'right' = 'left',
+    hint?: string,
+  ) => (
     <TableCell align={align} sortDirection={sort === key ? dir : false}>
-      <TableSortLabel
-        active={sort === key}
-        direction={sort === key ? dir : 'desc'}
-        onClick={() => {
-          setDir(sort === key && dir === 'desc' ? 'asc' : 'desc')
-          setSort(key)
-          setPage(0)
-        }}
-      >
-        {label}
-      </TableSortLabel>
+      <Tooltip title={hint ?? ''} disableHoverListener={!hint} arrow>
+        <TableSortLabel
+          active={sort === key}
+          direction={sort === key ? dir : 'desc'}
+          onClick={() => {
+            setDir(sort === key && dir === 'desc' ? 'asc' : 'desc')
+            setSort(key)
+            setPage(0)
+          }}
+        >
+          {label}
+        </TableSortLabel>
+      </Tooltip>
     </TableCell>
   )
 
   return (
-    <Paper>
-      <TableContainer sx={{ maxHeight: 'calc(100vh - 420px)', minHeight: 280 }}>
+    <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+      <TableContainer sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
         <Table stickyHeader size="small" aria-label="Lista de CVEs">
           <TableHead>
             <TableRow>
-              {head('risk', 'ID / Prioridad')}
-              {head('severity', 'Severidad')}
-              {head('cvss', 'CVSS', 'right')}
-              {head('epss', 'EPSS', 'right')}
+              {head('risk', 'ID / Prioridad', 'left', 'Orden por prioridad NOC: explotada, EPSS, stack y severidad')}
+              {head('severity', 'Severidad', 'left', 'Nivel de severidad según CVSS (Critical, High, Medium, Low)')}
+              {head('cvss', 'CVSS', 'right', 'Common Vulnerability Scoring System — impacto técnico de 0 a 10 (fuente NVD)')}
+              {head('epss', 'EPSS', 'right', 'Exploit Prediction Scoring System — probabilidad de explotación en los próximos 30 días (FIRST)')}
               <TableCell>Descripción</TableCell>
               <TableCell>Fuentes</TableCell>
-              {head('published', 'Publicado')}
+              {head('published', 'Publicado', 'left', 'Fecha de publicación del CVE')}
             </TableRow>
           </TableHead>
           <TableBody>
             {visible.map((c) => (
-              <TableRow key={c.id} hover onClick={() => onSelect(c)} sx={{ cursor: 'pointer' }}>
+              <TableRow
+                key={c.id}
+                hover
+                tabIndex={0}
+                role="button"
+                aria-label={`Abrir detalle de ${c.id}`}
+                onClick={() => onSelect(c)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    onSelect(c)
+                  }
+                }}
+                sx={{ cursor: 'pointer' }}
+              >
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>
                   <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                     {c.kev && (
                       <Tooltip title={`En CISA KEV desde ${c.kev.dateAdded}${c.kev.ransomware ? ' · usado en ransomware' : ''}`}>
-                        <LocalFireDepartmentIcon fontSize="small" sx={{ color: c.kev.ransomware ? '#d03b3b' : '#ec835a' }} aria-label="Explotada activamente" />
+                        <LocalFireDepartmentIcon fontSize="small" sx={{ color: c.kev.ransomware ? SEVERITY_COLOR.CRITICAL : KEV_COLOR }} aria-label="Explotada activamente" />
                       </Tooltip>
                     )}
                     <Typography sx={{ fontFamily: MONO, fontSize: 13, fontWeight: 600 }}>{c.id}</Typography>
@@ -157,6 +178,7 @@ export function CveTable({ rows, onSelect }: { rows: CveRecord[]; onSelect: (c: 
         rowsPerPageOptions={[25, 50, 100]}
         labelRowsPerPage="Filas"
         labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
+        sx={{ flexShrink: 0, borderTop: 1, borderColor: 'divider' }}
       />
     </Paper>
   )

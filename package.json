@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "sync:sources": "node scripts/sync-sources-config.mjs",
+    "catalog:apply": "node scripts/apply-sources-catalog.mjs && node scripts/sync-sources-config.mjs",
     "predev": "node scripts/sync-sources-config.mjs",
     "prebuild": "node scripts/sync-sources-config.mjs",
     "dev": "vite",

@@ -41,478 +41,1465 @@
   ],
   "technologies": [
     {
-      "id": "magento",
-      "label": "Magento",
-      "category": "framework",
-      "keywords": ["magento", "adobe commerce", "magento open source", "magento community", "magento ce", "magento os", "mage-os"],
-      "related": ["php", "mysql", "http", "redis", "linux", "varnish", "elasticsearch", "nginx", "cloudflare"],
-      "hub": true
-    },
-    {
-      "id": "sap",
-      "label": "SAP",
-      "keywords": ["sap", "sap se", "sap ag", "sap netweaver", "netweaver", "sap hana", "hana", "s/4hana", "s4hana", "sap s/4", "sap erp", "sap basis", "sap abap", "abap", "sap kernel", "sap gui", "sap fiori", "fiori", "sap gateway", "sap business one", "sap b1", "sap commerce", "hybris", "sap crm", "sap bw", "sap bi", "sap solution manager", "sap j2ee", "sapwebdisp", "sap dispatcher", "sap router", "icm", "sap maxdb", "sybase", "sap ase", "sap cpi", "sap btp", "sap cloud integration"],
-      "related": ["java", "http", "linux", "docker", "mysql", "postgres", "redis", "nginx", "windows", "network-security"],
-      "hub": true
-    },
-    {
-      "id": "php",
-      "label": "PHP",
-      "category": "language",
-      "keywords": ["php", "composer"],
-      "related": ["mysql", "http", "linux", "magento", "lamp", "wordpress", "codeigniter", "laravel", "symfony"]
-    },
-    {
       "id": "java",
       "label": "Java",
       "category": "language",
-      "keywords": ["java", "jdk", "openjdk", "jvm", "maven", "gradle", "temurin", "adoptium", "corretto"],
-      "related": ["spring", "linux", "docker", "sap", "tomcat", "kafka", "jenkins"]
+      "keywords": [
+        "java",
+        "jdk",
+        "openjdk",
+        "jvm",
+        "maven",
+        "gradle",
+        "temurin",
+        "adoptium",
+        "corretto"
+      ],
+      "related": [
+        "spring",
+        "linux",
+        "docker",
+        "sap",
+        "tomcat",
+        "kafka",
+        "jenkins"
+      ],
+      "group": "TEL",
+      "subgroup": "Java / Spring"
     },
     {
       "id": "spring",
       "label": "Spring",
       "category": "framework",
-      "keywords": ["spring", "spring boot", "springframework", "spring framework", "spring security", "spring cloud"],
-      "related": ["java", "tomcat", "kafka", "keycloak", "mqtt"]
+      "keywords": [
+        "spring",
+        "spring boot",
+        "springframework",
+        "spring framework",
+        "spring security",
+        "spring cloud"
+      ],
+      "related": [
+        "java",
+        "tomcat",
+        "kafka",
+        "keycloak",
+        "mqtt"
+      ],
+      "group": "TEL",
+      "subgroup": "Java / Spring"
     },
     {
-      "id": "python",
-      "label": "Python",
-      "category": "language",
-      "keywords": ["python", "pip", "pypi", "gunicorn", "uvicorn"],
-      "related": ["linux", "docker", "postgres", "redis", "nginx", "ansible", "django", "flask", "fastapi"]
+      "id": "cicd",
+      "label": "CI/CD",
+      "keywords": [
+        "ci/cd",
+        "continuous integration",
+        "build pipeline",
+        "artifact repository"
+      ],
+      "related": [
+        "jenkins",
+        "gitlab",
+        "github-actions",
+        "argocd",
+        "n8n",
+        "nexus"
+      ],
+      "hub": true,
+      "group": "TEL",
+      "subgroup": "Git / CI"
     },
     {
-      "id": "django",
-      "label": "Django",
-      "category": "framework",
-      "keywords": ["django", "django rest framework", "djangoproject"],
-      "related": ["python", "postgres", "mysql"]
+      "id": "github-actions",
+      "label": "GitHub Actions",
+      "keywords": [
+        "github actions",
+        "github workflow",
+        "actions runner",
+        "github enterprise server"
+      ],
+      "related": [
+        "cicd",
+        "nodejs"
+      ],
+      "group": "TEL",
+      "subgroup": "Git / CI"
     },
     {
-      "id": "flask",
-      "label": "Flask",
-      "category": "framework",
-      "keywords": ["flask"],
-      "related": ["python"]
+      "id": "gitlab",
+      "label": "GitLab",
+      "keywords": [
+        "gitlab",
+        "gitlab ce",
+        "gitlab ee",
+        "gitlab runner"
+      ],
+      "related": [
+        "cicd",
+        "docker",
+        "kubernetes"
+      ],
+      "group": "TEL",
+      "subgroup": "Git / CI"
     },
     {
-      "id": "fastapi",
-      "label": "FastAPI",
-      "category": "framework",
-      "keywords": ["fastapi", "starlette", "uvicorn"],
-      "related": ["python"]
+      "id": "jenkins",
+      "label": "Jenkins",
+      "keywords": [
+        "jenkins",
+        "jenkins plugin",
+        "cloudbees"
+      ],
+      "related": [
+        "java",
+        "cicd",
+        "docker",
+        "kubernetes"
+      ],
+      "group": "TEL",
+      "subgroup": "Git / CI"
     },
     {
-      "id": "laravel",
-      "label": "Laravel",
-      "category": "framework",
-      "keywords": ["laravel", "illuminate", "lumen"],
-      "related": ["php", "mysql", "redis"]
-    },
-    {
-      "id": "symfony",
-      "label": "Symfony",
-      "category": "framework",
-      "keywords": ["symfony", "symfony framework"],
-      "related": ["php", "mysql"]
-    },
-    {
-      "id": "nodejs",
-      "label": "Node.js",
-      "category": "language",
-      "keywords": ["node.js", "nodejs", "npm"],
-      "related": ["react", "redis", "docker", "linux", "nginx", "n8n", "mongodb", "express"]
-    },
-    {
-      "id": "express",
-      "label": "Express",
-      "category": "framework",
-      "keywords": ["express", "express.js", "expressjs"],
-      "related": ["nodejs"]
-    },
-    {
-      "id": "nestjs",
-      "label": "NestJS",
-      "category": "framework",
-      "keywords": ["nestjs", "nest.js"],
-      "related": ["nodejs", "express"]
+      "id": "nexus",
+      "label": "Nexus / Artifactory / SonarQube",
+      "keywords": [
+        "sonatype nexus",
+        "nexus repository",
+        "jfrog",
+        "artifactory",
+        "sonarqube",
+        "harbor registry"
+      ],
+      "related": [
+        "cicd",
+        "java",
+        "docker"
+      ],
+      "group": "TEL",
+      "subgroup": "Git / CI"
     },
     {
       "id": "react",
       "label": "React",
       "category": "framework",
-      "keywords": ["react", "react.js", "reactjs", "next.js", "nextjs", "create-react-app"],
-      "related": ["nodejs", "htmlcss", "jamstack", "react-native"]
-    },
-    {
-      "id": "react-native",
-      "label": "React Native",
-      "category": "framework",
-      "keywords": ["react native", "react-native", "expo", "metro bundler", "hermes engine"],
-      "related": ["react", "nodejs"]
-    },
-    {
-      "id": "htmlcss",
-      "label": "HTML / CSS",
-      "category": "language",
-      "keywords": ["html", "html5", "css", "css3", "dom xss", "cross-site scripting"],
-      "related": ["react", "jamstack"]
-    },
-    {
-      "id": "jamstack",
-      "label": "JAMstack",
-      "category": "framework",
-      "keywords": ["jamstack", "gatsby", "hugo", "jekyll", "eleventy", "astro", "netlify", "vercel", "nuxt"],
-      "related": ["react", "nodejs", "htmlcss", "nginx", "cloudflare"],
-      "hub": true
-    },
-    {
-      "id": "lamp",
-      "label": "LAMP",
-      "keywords": ["lamp", "linux apache", "mod_php", "libapache2"],
-      "related": ["linux", "http", "mysql", "php"],
-      "hub": true
-    },
-    {
-      "id": "wordpress",
-      "label": "WordPress",
-      "category": "framework",
-      "keywords": ["wordpress", "wp-admin", "woocommerce", "wordpress plugin", "wordpress theme", "wp rest api"],
-      "related": ["php", "mysql", "lamp", "nginx", "cloudflare"]
-    },
-    {
-      "id": "codeigniter",
-      "label": "CodeIgniter",
-      "category": "framework",
-      "keywords": ["codeigniter", "codeigniter4", "codeigniter 4"],
-      "related": ["php", "mysql", "lamp"]
-    },
-    {
-      "id": "linux",
-      "label": "Linux",
-      "keywords": ["linux", "ubuntu", "debian", "centos", "rhel", "redhat", "rocky linux", "almalinux", "amazon linux", "fedora", "suse", "sles"],
-      "related": ["linux-kernel", "docker", "nginx", "http", "kubernetes", "openssl"],
-      "hub": true
-    },
-    {
-      "id": "linux-kernel",
-      "label": "Linux Kernel",
-      "keywords": ["linux kernel", "kernel.org", "linux-kernel", "kernel vulnerability", "linux kernel module", "kworker", "netfilter", "io_uring", "cve-linux"],
-      "related": ["linux"]
-    },
-    {
-      "id": "windows",
-      "label": "Windows Server / AD",
-      "keywords": ["windows server", "microsoft windows", "active directory", "kerberos", "ntlm", "iis", "internet information services", "exchange server", "sharepoint server", "remote desktop", "rdp"],
-      "related": ["keycloak", "vmware", "network-security"]
-    },
-    {
-      "id": "openssl",
-      "label": "OpenSSL / OpenSSH",
-      "keywords": ["openssl", "libssl", "libcrypto", "openssh", "sshd", "libssh", "gnutls", "boringssl"],
-      "related": ["linux", "nginx", "http"]
-    },
-    {
-      "id": "mysql",
-      "label": "MySQL",
-      "keywords": ["mysql", "mariadb", "mysql community", "mysql server", "oracle mysql"],
-      "related": ["lamp", "magento", "php", "linux"]
-    },
-    {
-      "id": "community",
-      "label": "Community Editions",
-      "keywords": ["community edition", "open source edition", "opensource", "magento community", "mysql community", "openjdk", "postgresql community"],
-      "related": ["magento", "mysql", "java"]
-    },
-    {
-      "id": "postgres",
-      "label": "PostgreSQL",
-      "keywords": ["postgresql", "postgres"],
-      "related": ["linux", "docker", "python"]
-    },
-    {
-      "id": "mongodb",
-      "label": "MongoDB",
-      "keywords": ["mongodb", "mongoose", "mongod", "mongo shell"],
-      "related": ["nodejs", "docker", "linux"]
-    },
-    {
-      "id": "elasticsearch",
-      "label": "Elasticsearch / OpenSearch",
-      "keywords": ["elasticsearch", "opensearch", "kibana", "logstash", "elastic stack", "opensearch dashboards"],
-      "related": ["magento", "java", "docker", "kubernetes"]
-    },
-    {
-      "id": "docker",
-      "label": "Docker",
-      "keywords": ["docker", "containerd", "runc", "buildkit", "moby", "docker desktop"],
-      "related": ["linux", "nginx", "redis", "kubernetes"]
-    },
-    {
-      "id": "kubernetes",
-      "label": "Kubernetes",
-      "keywords": ["kubernetes", "k8s", "kubelet", "kube-apiserver", "kube-proxy", "kubectl", "etcd", "cri-o", "ingress-nginx", "ingress nginx", "openshift", "eks", "aks", "gke", "coredns"],
-      "related": ["docker", "linux", "rancher", "helm", "argocd", "nginx", "traefik", "prometheus"],
-      "hub": true
-    },
-    {
-      "id": "rancher",
-      "label": "Rancher (SUSE)",
-      "keywords": ["rancher", "rke2", "rke", "k3s", "longhorn", "rancher fleet", "neuvector", "rancher desktop", "harvester"],
-      "related": ["kubernetes", "docker", "linux", "helm"]
-    },
-    {
-      "id": "helm",
-      "label": "Helm",
-      "keywords": ["helm chart", "helm v3", "helm.sh", "kubernetes helm"],
-      "related": ["kubernetes", "rancher", "argocd"]
-    },
-    {
-      "id": "argocd",
-      "label": "Argo CD / Flux",
-      "keywords": ["argo cd", "argocd", "argo workflows", "argo rollouts", "fluxcd", "flux cd"],
-      "related": ["kubernetes", "helm", "cicd"]
+      "keywords": [
+        "react",
+        "react.js",
+        "reactjs",
+        "next.js",
+        "nextjs",
+        "create-react-app"
+      ],
+      "related": [
+        "nodejs",
+        "htmlcss",
+        "jamstack",
+        "react-native"
+      ],
+      "group": "TEL",
+      "subgroup": "React"
     },
     {
       "id": "nginx",
       "label": "Nginx",
-      "keywords": ["nginx", "nginx plus", "openresty"],
-      "related": ["linux", "docker", "http", "kubernetes", "cloudflare"]
-    },
-    {
-      "id": "traefik",
-      "label": "Traefik",
-      "keywords": ["traefik"],
-      "related": ["kubernetes", "docker"]
-    },
-    {
-      "id": "haproxy",
-      "label": "HAProxy",
-      "keywords": ["haproxy"],
-      "related": ["linux", "kubernetes", "network-security"]
-    },
-    {
-      "id": "varnish",
-      "label": "Varnish",
-      "keywords": ["varnish", "varnish cache", "varnishd"],
-      "related": ["magento", "nginx", "cdn-edge"]
-    },
-    {
-      "id": "redis",
-      "label": "Redis",
-      "keywords": ["redis", "valkey", "keydb"],
-      "related": ["linux", "docker", "magento"]
-    },
-    {
-      "id": "http",
-      "label": "HTTP / Apache",
-      "keywords": ["apache httpd", "httpd", "http server", "apache"],
-      "related": ["linux", "nginx", "lamp", "sap", "tomcat", "openssl"]
+      "keywords": [
+        "nginx",
+        "nginx plus",
+        "openresty"
+      ],
+      "related": [
+        "linux",
+        "docker",
+        "http",
+        "kubernetes",
+        "cloudflare"
+      ],
+      "group": "TEL",
+      "subgroup": "Nginx"
     },
     {
       "id": "tomcat",
       "label": "Apache Tomcat",
       "category": "framework",
-      "keywords": ["tomcat", "apache tomcat", "catalina", "jetty", "undertow"],
-      "related": ["java", "spring", "http"]
+      "keywords": [
+        "tomcat",
+        "apache tomcat",
+        "catalina",
+        "jetty",
+        "undertow"
+      ],
+      "related": [
+        "java",
+        "spring",
+        "http"
+      ],
+      "group": "TEL",
+      "subgroup": "Tomcat"
     },
     {
-      "id": "cdn-edge",
-      "label": "CDN / Edge",
-      "keywords": ["cdn", "content delivery network", "edge computing", "reverse proxy", "ddos protection"],
-      "related": ["cloudflare", "varnish", "akamai", "nginx"],
-      "hub": true
+      "id": "http",
+      "label": "HTTP / Apache",
+      "keywords": [
+        "apache httpd",
+        "httpd",
+        "http server",
+        "apache"
+      ],
+      "related": [
+        "linux",
+        "nginx",
+        "lamp",
+        "sap",
+        "tomcat",
+        "openssl"
+      ],
+      "group": "TEL",
+      "subgroup": "Apache HTTP"
     },
     {
-      "id": "cloudflare",
-      "label": "Cloudflare",
-      "keywords": ["cloudflare", "cloudflared", "cloudflare tunnel", "cloudflare workers", "workerd", "wrangler", "miniflare", "pingora", "cloudflare warp", "cloudflare zero trust"],
-      "related": ["cdn-edge", "network-security", "jamstack", "nginx", "nodejs"]
+      "id": "wso2",
+      "label": "WSO2",
+      "keywords": [
+        "wso2",
+        "wso2 api manager",
+        "wso2 identity server",
+        "wso2 ei",
+        "wso2 micro integrator",
+        "wso2 enterprise integrator"
+      ],
+      "related": [
+        "java",
+        "http",
+        "tomcat",
+        "keycloak"
+      ],
+      "group": "TEL",
+      "subgroup": "WSO2"
     },
     {
-      "id": "akamai",
-      "label": "Akamai",
-      "keywords": ["akamai", "linode", "akamai edgeworkers"],
-      "related": ["cdn-edge"]
+      "id": "codeigniter",
+      "label": "CodeIgniter",
+      "category": "framework",
+      "keywords": [
+        "codeigniter",
+        "codeigniter4",
+        "codeigniter 4"
+      ],
+      "related": [
+        "php",
+        "mysql",
+        "lamp"
+      ],
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "network-security",
-      "label": "Firewall / Perímetro",
-      "keywords": ["firewall", "next-generation firewall", "ngfw", "utm", "ssl vpn", "ssl-vpn", "ipsec vpn", "web application firewall", "waf", "secure web gateway"],
-      "related": ["fortinet", "paloalto", "cisco", "checkpoint", "sophos", "sonicwall", "ivanti", "citrix", "f5", "cloudflare", "vpn"],
-      "hub": true
+      "id": "django",
+      "label": "Django",
+      "category": "framework",
+      "keywords": [
+        "django",
+        "django rest framework",
+        "djangoproject"
+      ],
+      "related": [
+        "python",
+        "postgres",
+        "mysql"
+      ],
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "fortinet",
-      "label": "Fortinet",
-      "keywords": ["fortinet", "fortigate", "fortios", "fortiproxy", "fortimanager", "fortianalyzer", "fortiweb", "fortiswitch", "forticlient", "fortisiem", "fortiadc", "fortimail", "fortisandbox", "fortinac", "fortiap", "fortiedr", "fortiauthenticator", "fortiswitchmanager"],
-      "related": ["network-security", "vpn"]
+      "id": "express",
+      "label": "Express",
+      "category": "framework",
+      "keywords": [
+        "express",
+        "express.js",
+        "expressjs"
+      ],
+      "related": [
+        "nodejs"
+      ],
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "paloalto",
-      "label": "Palo Alto Networks",
-      "keywords": ["palo alto networks", "pan-os", "globalprotect", "panorama", "prisma access", "prisma cloud", "cortex xdr", "cortex xsoar", "expedition"],
-      "related": ["network-security", "vpn"]
+      "id": "fastapi",
+      "label": "FastAPI",
+      "category": "framework",
+      "keywords": [
+        "fastapi",
+        "starlette"
+      ],
+      "related": [
+        "python"
+      ],
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "cisco",
-      "label": "Cisco",
-      "keywords": ["cisco", "cisco asa", "adaptive security appliance", "firepower", "firepower threat defense", "cisco ios", "ios xe", "ios xr", "nx-os", "anyconnect", "cisco secure client", "cisco ise", "meraki", "cisco smart licensing"],
-      "related": ["network-security", "vpn"]
+      "id": "flask",
+      "label": "Flask",
+      "category": "framework",
+      "keywords": [
+        "flask"
+      ],
+      "related": [
+        "python"
+      ],
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "checkpoint",
-      "label": "Check Point",
-      "keywords": ["check point", "checkpoint", "quantum security gateway", "check point gaia", "harmony endpoint", "cloudguard"],
-      "related": ["network-security", "vpn"]
+      "id": "laravel",
+      "label": "Laravel",
+      "category": "framework",
+      "keywords": [
+        "laravel",
+        "illuminate",
+        "lumen"
+      ],
+      "related": [
+        "php",
+        "mysql",
+        "redis"
+      ],
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "sophos",
-      "label": "Sophos",
-      "keywords": ["sophos", "sophos firewall", "sophos xg", "sfos", "sophos utm", "sophos central"],
-      "related": ["network-security"]
+      "id": "magento",
+      "label": "Magento",
+      "category": "framework",
+      "keywords": [
+        "magento",
+        "adobe commerce",
+        "magento open source",
+        "magento community",
+        "magento ce",
+        "magento os",
+        "mage-os"
+      ],
+      "related": [
+        "php",
+        "mysql",
+        "http",
+        "redis",
+        "linux",
+        "varnish",
+        "elasticsearch",
+        "nginx",
+        "cloudflare"
+      ],
+      "hub": true,
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "sonicwall",
-      "label": "SonicWall",
-      "keywords": ["sonicwall", "sonicos", "sma 100", "sma 1000", "netextender"],
-      "related": ["network-security", "vpn"]
+      "id": "nestjs",
+      "label": "NestJS",
+      "category": "framework",
+      "keywords": [
+        "nestjs",
+        "nest.js"
+      ],
+      "related": [
+        "nodejs",
+        "express"
+      ],
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "ivanti",
-      "label": "Ivanti",
-      "keywords": ["ivanti", "ivanti connect secure", "pulse secure", "pulse connect secure", "ivanti policy secure", "ivanti epmm", "mobileiron", "ivanti neurons"],
-      "related": ["network-security", "vpn"]
+      "id": "nodejs",
+      "label": "Node.js",
+      "category": "language",
+      "keywords": [
+        "node.js",
+        "nodejs",
+        "npm"
+      ],
+      "related": [
+        "react",
+        "redis",
+        "docker",
+        "linux",
+        "nginx",
+        "n8n",
+        "mongodb",
+        "express"
+      ],
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "citrix",
-      "label": "Citrix / NetScaler",
-      "keywords": ["citrix", "netscaler", "citrix adc", "citrix gateway", "citrix workspace", "xenapp", "xendesktop"],
-      "related": ["network-security", "vpn", "windows"]
+      "id": "php",
+      "label": "PHP",
+      "category": "language",
+      "keywords": [
+        "php",
+        "composer"
+      ],
+      "related": [
+        "mysql",
+        "http",
+        "linux",
+        "magento",
+        "lamp",
+        "wordpress",
+        "codeigniter",
+        "laravel",
+        "symfony"
+      ],
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "f5",
-      "label": "F5 BIG-IP",
-      "keywords": ["f5 networks", "big-ip", "bigip", "f5 big-ip", "tmui", "big-ip apm", "nginx plus"],
-      "related": ["network-security", "nginx"]
+      "id": "python",
+      "label": "Python",
+      "category": "language",
+      "keywords": [
+        "python",
+        "pip",
+        "pypi",
+        "gunicorn",
+        "uvicorn"
+      ],
+      "related": [
+        "linux",
+        "docker",
+        "postgres",
+        "redis",
+        "nginx",
+        "ansible",
+        "django",
+        "flask",
+        "fastapi"
+      ],
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "vpn",
-      "label": "VPN",
-      "keywords": ["vpn", "openvpn", "wireguard", "strongswan", "libreswan", "tailscale", "zerotier"],
-      "related": ["network-security", "linux"]
+      "id": "symfony",
+      "label": "Symfony",
+      "category": "framework",
+      "keywords": [
+        "symfony",
+        "symfony framework"
+      ],
+      "related": [
+        "php",
+        "mysql"
+      ],
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "vmware",
-      "label": "VMware / Broadcom",
-      "keywords": ["vmware", "esxi", "vcenter", "vsphere", "vmware workstation", "vmware tools", "nsx", "aria operations", "horizon"],
-      "related": ["linux", "windows", "kubernetes"]
+      "id": "wordpress",
+      "label": "WordPress",
+      "category": "framework",
+      "keywords": [
+        "wordpress",
+        "wp-admin",
+        "woocommerce",
+        "wordpress plugin",
+        "wordpress theme",
+        "wp rest api"
+      ],
+      "related": [
+        "php",
+        "mysql",
+        "lamp",
+        "nginx",
+        "cloudflare"
+      ],
+      "subgroup": "Lenguajes y plataformas backend"
     },
     {
-      "id": "cloud",
-      "label": "Cloud Pública",
-      "keywords": ["cloud", "iaas", "paas", "serverless"],
-      "related": ["aws", "azure", "gcp", "kubernetes", "terraform"],
-      "hub": true
+      "id": "htmlcss",
+      "label": "HTML / CSS",
+      "category": "language",
+      "keywords": [
+        "html",
+        "html5",
+        "css",
+        "css3",
+        "dom xss",
+        "cross-site scripting"
+      ],
+      "related": [
+        "react",
+        "jamstack"
+      ],
+      "subgroup": "Frontend web"
     },
     {
-      "id": "aws",
-      "label": "AWS",
-      "keywords": ["aws", "amazon web services", "amazon s3", "aws lambda", "amazon ec2", "aws sdk", "aws iam", "amazon cognito"],
-      "related": ["cloud", "kubernetes", "terraform"]
+      "id": "jamstack",
+      "label": "JAMstack",
+      "category": "framework",
+      "keywords": [
+        "jamstack",
+        "gatsby",
+        "hugo",
+        "jekyll",
+        "eleventy",
+        "astro",
+        "netlify",
+        "vercel",
+        "nuxt"
+      ],
+      "related": [
+        "react",
+        "nodejs",
+        "htmlcss",
+        "nginx",
+        "cloudflare"
+      ],
+      "hub": true,
+      "subgroup": "Frontend web"
     },
     {
-      "id": "azure",
-      "label": "Microsoft Azure",
-      "keywords": ["azure", "microsoft entra", "azure ad", "azure devops", "azure functions", "azure sdk"],
-      "related": ["cloud", "windows", "kubernetes"]
+      "id": "react-native",
+      "label": "React Native",
+      "category": "framework",
+      "keywords": [
+        "react native",
+        "react-native",
+        "expo",
+        "metro bundler",
+        "hermes engine"
+      ],
+      "related": [
+        "react",
+        "nodejs"
+      ],
+      "subgroup": "Móvil"
     },
     {
-      "id": "gcp",
-      "label": "Google Cloud",
-      "keywords": ["google cloud", "gcp", "cloud run", "cloud functions", "firebase", "google kubernetes engine"],
-      "related": ["cloud", "kubernetes"]
+      "id": "community",
+      "label": "Community Editions",
+      "keywords": [
+        "community edition",
+        "open source edition",
+        "opensource",
+        "magento community",
+        "mysql community",
+        "openjdk",
+        "postgresql community"
+      ],
+      "related": [
+        "magento",
+        "mysql",
+        "java"
+      ],
+      "subgroup": "Bases de datos"
     },
     {
-      "id": "terraform",
-      "label": "Terraform / OpenTofu",
-      "keywords": ["terraform", "opentofu", "hashicorp", "vault", "consul", "nomad", "packer"],
-      "related": ["cloud", "kubernetes", "ansible"]
+      "id": "elasticsearch",
+      "label": "Elasticsearch / OpenSearch",
+      "keywords": [
+        "elasticsearch",
+        "opensearch",
+        "kibana",
+        "logstash",
+        "elastic stack",
+        "opensearch dashboards"
+      ],
+      "related": [
+        "magento",
+        "java",
+        "docker",
+        "kubernetes"
+      ],
+      "subgroup": "Bases de datos"
     },
     {
-      "id": "ansible",
-      "label": "Ansible",
-      "keywords": ["ansible", "ansible tower", "awx", "ansible automation platform"],
-      "related": ["python", "linux", "terraform"]
+      "id": "mongodb",
+      "label": "MongoDB",
+      "keywords": [
+        "mongodb",
+        "mongoose",
+        "mongod",
+        "mongo shell"
+      ],
+      "related": [
+        "nodejs",
+        "docker",
+        "linux"
+      ],
+      "subgroup": "Bases de datos"
     },
     {
-      "id": "cicd",
-      "label": "CI/CD",
-      "keywords": ["ci/cd", "continuous integration", "build pipeline", "artifact repository"],
-      "related": ["jenkins", "gitlab", "github-actions", "argocd", "n8n", "nexus"],
-      "hub": true
+      "id": "mysql",
+      "label": "MySQL",
+      "keywords": [
+        "mysql",
+        "mariadb",
+        "mysql community",
+        "mysql server",
+        "oracle mysql"
+      ],
+      "related": [
+        "lamp",
+        "magento",
+        "php",
+        "linux"
+      ],
+      "subgroup": "Bases de datos"
     },
     {
-      "id": "jenkins",
-      "label": "Jenkins",
-      "keywords": ["jenkins", "jenkins plugin", "cloudbees"],
-      "related": ["java", "cicd", "docker", "kubernetes"]
+      "id": "postgres",
+      "label": "PostgreSQL",
+      "keywords": [
+        "postgresql",
+        "postgres"
+      ],
+      "related": [
+        "linux",
+        "docker",
+        "python"
+      ],
+      "subgroup": "Bases de datos"
     },
     {
-      "id": "gitlab",
-      "label": "GitLab",
-      "keywords": ["gitlab", "gitlab ce", "gitlab ee", "gitlab runner"],
-      "related": ["cicd", "docker", "kubernetes"]
-    },
-    {
-      "id": "github-actions",
-      "label": "GitHub Actions",
-      "keywords": ["github actions", "github workflow", "actions runner", "github enterprise server"],
-      "related": ["cicd", "nodejs"]
-    },
-    {
-      "id": "nexus",
-      "label": "Nexus / Artifactory / SonarQube",
-      "keywords": ["sonatype nexus", "nexus repository", "jfrog", "artifactory", "sonarqube", "harbor registry"],
-      "related": ["cicd", "java", "docker"]
-    },
-    {
-      "id": "n8n",
-      "label": "n8n",
-      "keywords": ["n8n"],
-      "related": ["nodejs", "cicd", "docker"]
-    },
-    {
-      "id": "keycloak",
-      "label": "Keycloak / IAM",
-      "keywords": ["keycloak", "oauth2", "openid connect", "oidc", "saml", "okta", "auth0"],
-      "related": ["java", "spring", "windows"]
+      "id": "redis",
+      "label": "Redis",
+      "keywords": [
+        "redis",
+        "valkey",
+        "keydb"
+      ],
+      "related": [
+        "linux",
+        "docker",
+        "magento"
+      ],
+      "subgroup": "Bases de datos"
     },
     {
       "id": "kafka",
       "label": "Kafka",
-      "keywords": ["apache kafka", "kafka", "kafka connect", "confluent", "zookeeper", "redpanda"],
-      "related": ["java", "spring", "kubernetes"]
+      "keywords": [
+        "apache kafka",
+        "kafka",
+        "kafka connect",
+        "confluent",
+        "zookeeper",
+        "redpanda"
+      ],
+      "related": [
+        "java",
+        "spring",
+        "kubernetes"
+      ],
+      "subgroup": "Integración y mensajería"
     },
     {
-      "id": "rabbitmq",
-      "label": "RabbitMQ",
-      "keywords": ["rabbitmq", "amqp", "activemq", "artemis"],
-      "related": ["java", "spring", "docker", "magento"]
+      "id": "keycloak",
+      "label": "Keycloak / IAM",
+      "keywords": [
+        "keycloak",
+        "oauth2",
+        "openid connect",
+        "oidc",
+        "saml",
+        "okta",
+        "auth0"
+      ],
+      "related": [
+        "java",
+        "spring",
+        "windows"
+      ],
+      "subgroup": "Integración y mensajería"
     },
     {
       "id": "mqtt",
       "label": "MQTT",
-      "keywords": ["mqtt", "mosquitto", "emqx", "hivemq", "eclipse paho", "vernemq"],
-      "related": ["spring", "java", "nodejs", "docker"]
+      "keywords": [
+        "mqtt",
+        "mosquitto",
+        "emqx",
+        "hivemq",
+        "eclipse paho",
+        "vernemq"
+      ],
+      "related": [
+        "spring",
+        "java",
+        "nodejs",
+        "docker"
+      ],
+      "subgroup": "Integración y mensajería"
+    },
+    {
+      "id": "rabbitmq",
+      "label": "RabbitMQ",
+      "keywords": [
+        "rabbitmq",
+        "amqp",
+        "activemq",
+        "artemis"
+      ],
+      "related": [
+        "java",
+        "spring",
+        "docker",
+        "magento"
+      ],
+      "subgroup": "Integración y mensajería"
+    },
+    {
+      "id": "sap",
+      "label": "SAP",
+      "keywords": [
+        "sap",
+        "sap se",
+        "sap ag",
+        "sap netweaver",
+        "netweaver",
+        "sap hana",
+        "hana",
+        "s/4hana",
+        "s4hana",
+        "sap s/4",
+        "sap erp",
+        "sap basis",
+        "sap abap",
+        "abap",
+        "sap kernel",
+        "sap gui",
+        "sap fiori",
+        "fiori",
+        "sap gateway",
+        "sap business one",
+        "sap b1",
+        "sap commerce",
+        "hybris",
+        "sap crm",
+        "sap bw",
+        "sap bi",
+        "sap solution manager",
+        "sap j2ee",
+        "sapwebdisp",
+        "sap dispatcher",
+        "sap router",
+        "icm",
+        "sap maxdb",
+        "sybase",
+        "sap ase",
+        "sap cpi",
+        "sap btp",
+        "sap cloud integration"
+      ],
+      "related": [
+        "java",
+        "http",
+        "linux",
+        "docker",
+        "mysql",
+        "postgres",
+        "redis",
+        "nginx",
+        "windows",
+        "network-security"
+      ],
+      "hub": true,
+      "subgroup": "ERP y plataformas"
+    },
+    {
+      "id": "akamai",
+      "label": "Akamai",
+      "keywords": [
+        "akamai",
+        "linode",
+        "akamai edgeworkers"
+      ],
+      "related": [
+        "cdn-edge"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "ansible",
+      "label": "Ansible",
+      "keywords": [
+        "ansible",
+        "ansible tower",
+        "awx",
+        "ansible automation platform"
+      ],
+      "related": [
+        "python",
+        "linux",
+        "terraform"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "aws",
+      "label": "AWS",
+      "keywords": [
+        "aws",
+        "amazon web services",
+        "amazon s3",
+        "aws lambda",
+        "amazon ec2",
+        "aws sdk",
+        "aws iam",
+        "amazon cognito"
+      ],
+      "related": [
+        "cloud",
+        "kubernetes",
+        "terraform"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "cdn-edge",
+      "label": "CDN / Edge",
+      "keywords": [
+        "cdn",
+        "content delivery network",
+        "edge computing",
+        "reverse proxy",
+        "ddos protection"
+      ],
+      "related": [
+        "cloudflare",
+        "varnish",
+        "akamai",
+        "nginx"
+      ],
+      "hub": true,
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "checkpoint",
+      "label": "Check Point",
+      "keywords": [
+        "check point",
+        "checkpoint",
+        "quantum security gateway",
+        "check point gaia",
+        "harmony endpoint",
+        "cloudguard"
+      ],
+      "related": [
+        "network-security",
+        "vpn"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "cisco",
+      "label": "Cisco",
+      "keywords": [
+        "cisco",
+        "cisco asa",
+        "adaptive security appliance",
+        "firepower",
+        "firepower threat defense",
+        "cisco ios",
+        "ios xe",
+        "ios xr",
+        "nx-os",
+        "anyconnect",
+        "cisco secure client",
+        "cisco ise",
+        "meraki",
+        "cisco smart licensing"
+      ],
+      "related": [
+        "network-security",
+        "vpn"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "citrix",
+      "label": "Citrix / NetScaler",
+      "keywords": [
+        "citrix",
+        "netscaler",
+        "citrix adc",
+        "citrix gateway",
+        "citrix workspace",
+        "xenapp",
+        "xendesktop"
+      ],
+      "related": [
+        "network-security",
+        "vpn",
+        "windows"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "cloud",
+      "label": "Cloud Pública",
+      "keywords": [
+        "cloud",
+        "iaas",
+        "paas",
+        "serverless"
+      ],
+      "related": [
+        "aws",
+        "azure",
+        "gcp",
+        "kubernetes",
+        "terraform"
+      ],
+      "hub": true,
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "cloudflare",
+      "label": "Cloudflare",
+      "keywords": [
+        "cloudflare",
+        "cloudflared",
+        "cloudflare tunnel",
+        "cloudflare workers",
+        "workerd",
+        "wrangler",
+        "miniflare",
+        "pingora",
+        "cloudflare warp",
+        "cloudflare zero trust"
+      ],
+      "related": [
+        "cdn-edge",
+        "network-security",
+        "jamstack",
+        "nginx",
+        "nodejs"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "docker",
+      "label": "Docker",
+      "keywords": [
+        "docker",
+        "containerd",
+        "runc",
+        "buildkit",
+        "moby",
+        "docker desktop"
+      ],
+      "related": [
+        "linux",
+        "nginx",
+        "redis",
+        "kubernetes"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "f5",
+      "label": "F5 BIG-IP",
+      "keywords": [
+        "f5 networks",
+        "big-ip",
+        "bigip",
+        "f5 big-ip",
+        "tmui",
+        "big-ip apm",
+        "nginx plus"
+      ],
+      "related": [
+        "network-security",
+        "nginx"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "network-security",
+      "label": "Firewall / Perímetro",
+      "keywords": [
+        "firewall",
+        "next-generation firewall",
+        "ngfw",
+        "utm",
+        "ssl vpn",
+        "ssl-vpn",
+        "ipsec vpn",
+        "web application firewall",
+        "waf",
+        "secure web gateway"
+      ],
+      "related": [
+        "fortinet",
+        "paloalto",
+        "cisco",
+        "checkpoint",
+        "sophos",
+        "sonicwall",
+        "ivanti",
+        "citrix",
+        "f5",
+        "cloudflare",
+        "vpn"
+      ],
+      "hub": true,
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "fortinet",
+      "label": "Fortinet",
+      "keywords": [
+        "fortinet",
+        "fortigate",
+        "fortios",
+        "fortiproxy",
+        "fortimanager",
+        "fortianalyzer",
+        "fortiweb",
+        "fortiswitch",
+        "forticlient",
+        "fortisiem",
+        "fortiadc",
+        "fortimail",
+        "fortisandbox",
+        "fortinac",
+        "fortiap",
+        "fortiedr",
+        "fortiauthenticator",
+        "fortiswitchmanager"
+      ],
+      "related": [
+        "network-security",
+        "vpn"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "gcp",
+      "label": "Google Cloud",
+      "keywords": [
+        "google cloud",
+        "gcp",
+        "cloud run",
+        "cloud functions",
+        "firebase",
+        "google kubernetes engine"
+      ],
+      "related": [
+        "cloud",
+        "kubernetes"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "ivanti",
+      "label": "Ivanti",
+      "keywords": [
+        "ivanti",
+        "ivanti connect secure",
+        "pulse secure",
+        "pulse connect secure",
+        "ivanti policy secure",
+        "ivanti epmm",
+        "mobileiron",
+        "ivanti neurons"
+      ],
+      "related": [
+        "network-security",
+        "vpn"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "kubernetes",
+      "label": "Kubernetes",
+      "keywords": [
+        "kubernetes",
+        "k8s",
+        "kubelet",
+        "kube-apiserver",
+        "kube-proxy",
+        "kubectl",
+        "etcd",
+        "cri-o",
+        "ingress-nginx",
+        "ingress nginx",
+        "openshift",
+        "eks",
+        "aks",
+        "gke",
+        "coredns"
+      ],
+      "related": [
+        "docker",
+        "linux",
+        "rancher",
+        "helm",
+        "argocd",
+        "nginx",
+        "traefik",
+        "prometheus"
+      ],
+      "hub": true,
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "linux",
+      "label": "Linux",
+      "keywords": [
+        "linux",
+        "ubuntu",
+        "debian",
+        "centos",
+        "rhel",
+        "redhat",
+        "rocky linux",
+        "almalinux",
+        "amazon linux",
+        "fedora",
+        "suse",
+        "sles"
+      ],
+      "related": [
+        "linux-kernel",
+        "docker",
+        "nginx",
+        "http",
+        "kubernetes",
+        "openssl"
+      ],
+      "hub": true,
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "linux-kernel",
+      "label": "Linux Kernel",
+      "keywords": [
+        "linux kernel",
+        "kernel.org",
+        "linux-kernel",
+        "kernel vulnerability",
+        "linux kernel module",
+        "kworker",
+        "netfilter",
+        "io_uring",
+        "cve-linux"
+      ],
+      "related": [
+        "linux"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "azure",
+      "label": "Microsoft Azure",
+      "keywords": [
+        "azure",
+        "microsoft entra",
+        "azure ad",
+        "azure devops",
+        "azure functions",
+        "azure sdk"
+      ],
+      "related": [
+        "cloud",
+        "windows",
+        "kubernetes"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "openssl",
+      "label": "OpenSSL / OpenSSH",
+      "keywords": [
+        "openssl",
+        "libssl",
+        "libcrypto",
+        "openssh",
+        "sshd",
+        "libssh",
+        "gnutls",
+        "boringssl"
+      ],
+      "related": [
+        "linux",
+        "nginx",
+        "http"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "paloalto",
+      "label": "Palo Alto Networks",
+      "keywords": [
+        "palo alto networks",
+        "pan-os",
+        "globalprotect",
+        "panorama",
+        "prisma access",
+        "prisma cloud",
+        "cortex xdr",
+        "cortex xsoar",
+        "expedition"
+      ],
+      "related": [
+        "network-security",
+        "vpn"
+      ],
+      "subgroup": "Cloud e infraestructura"
     },
     {
       "id": "prometheus",
       "label": "Prometheus / Grafana",
-      "keywords": ["prometheus", "grafana", "loki", "alertmanager", "node_exporter", "zabbix", "datadog agent"],
-      "related": ["kubernetes", "docker", "linux", "elasticsearch"]
+      "keywords": [
+        "prometheus",
+        "grafana",
+        "loki",
+        "alertmanager",
+        "node_exporter",
+        "zabbix",
+        "datadog agent"
+      ],
+      "related": [
+        "kubernetes",
+        "docker",
+        "linux",
+        "elasticsearch"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "rancher",
+      "label": "Rancher (SUSE)",
+      "keywords": [
+        "rancher",
+        "rke2",
+        "rke",
+        "k3s",
+        "longhorn",
+        "rancher fleet",
+        "neuvector",
+        "rancher desktop",
+        "harvester"
+      ],
+      "related": [
+        "kubernetes",
+        "docker",
+        "linux",
+        "helm"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "sonicwall",
+      "label": "SonicWall",
+      "keywords": [
+        "sonicwall",
+        "sonicos",
+        "sma 100",
+        "sma 1000",
+        "netextender"
+      ],
+      "related": [
+        "network-security",
+        "vpn"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "sophos",
+      "label": "Sophos",
+      "keywords": [
+        "sophos",
+        "sophos firewall",
+        "sophos xg",
+        "sfos",
+        "sophos utm",
+        "sophos central"
+      ],
+      "related": [
+        "network-security"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "terraform",
+      "label": "Terraform / OpenTofu",
+      "keywords": [
+        "terraform",
+        "opentofu",
+        "hashicorp",
+        "vault",
+        "consul",
+        "nomad",
+        "packer"
+      ],
+      "related": [
+        "cloud",
+        "kubernetes",
+        "ansible"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "vmware",
+      "label": "VMware / Broadcom",
+      "keywords": [
+        "vmware",
+        "esxi",
+        "vcenter",
+        "vsphere",
+        "vmware workstation",
+        "vmware tools",
+        "nsx",
+        "aria operations",
+        "horizon"
+      ],
+      "related": [
+        "linux",
+        "windows",
+        "kubernetes"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "vpn",
+      "label": "VPN",
+      "keywords": [
+        "vpn",
+        "openvpn",
+        "wireguard",
+        "strongswan",
+        "libreswan",
+        "tailscale",
+        "zerotier"
+      ],
+      "related": [
+        "network-security",
+        "linux"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "windows",
+      "label": "Windows Server / AD",
+      "keywords": [
+        "windows server",
+        "microsoft windows",
+        "active directory",
+        "kerberos",
+        "ntlm",
+        "iis",
+        "internet information services",
+        "exchange server",
+        "sharepoint server",
+        "remote desktop",
+        "rdp"
+      ],
+      "related": [
+        "keycloak",
+        "vmware",
+        "network-security"
+      ],
+      "subgroup": "Cloud e infraestructura"
+    },
+    {
+      "id": "argocd",
+      "label": "Argo CD / Flux",
+      "keywords": [
+        "argo cd",
+        "argocd",
+        "argo workflows",
+        "argo rollouts",
+        "fluxcd",
+        "flux cd"
+      ],
+      "related": [
+        "kubernetes",
+        "helm",
+        "cicd"
+      ],
+      "subgroup": "CI/CD y herramientas"
+    },
+    {
+      "id": "helm",
+      "label": "Helm",
+      "keywords": [
+        "helm chart",
+        "helm v3",
+        "helm.sh",
+        "kubernetes helm"
+      ],
+      "related": [
+        "kubernetes",
+        "rancher",
+        "argocd"
+      ],
+      "subgroup": "CI/CD y herramientas"
+    },
+    {
+      "id": "n8n",
+      "label": "n8n",
+      "keywords": [
+        "n8n"
+      ],
+      "related": [
+        "nodejs",
+        "cicd",
+        "docker"
+      ],
+      "subgroup": "CI/CD y herramientas"
+    },
+    {
+      "id": "haproxy",
+      "label": "HAProxy",
+      "keywords": [
+        "haproxy"
+      ],
+      "related": [
+        "linux",
+        "kubernetes",
+        "network-security"
+      ],
+      "subgroup": "Servidores web y middleware"
+    },
+    {
+      "id": "lamp",
+      "label": "LAMP",
+      "keywords": [
+        "lamp",
+        "linux apache",
+        "mod_php",
+        "libapache2"
+      ],
+      "related": [
+        "linux",
+        "http",
+        "mysql",
+        "php"
+      ],
+      "hub": true,
+      "subgroup": "Servidores web y middleware"
+    },
+    {
+      "id": "traefik",
+      "label": "Traefik",
+      "keywords": [
+        "traefik"
+      ],
+      "related": [
+        "kubernetes",
+        "docker"
+      ],
+      "subgroup": "Servidores web y middleware"
+    },
+    {
+      "id": "varnish",
+      "label": "Varnish",
+      "keywords": [
+        "varnish",
+        "varnish cache",
+        "varnishd"
+      ],
+      "related": [
+        "magento",
+        "nginx",
+        "cdn-edge"
+      ],
+      "subgroup": "Servidores web y middleware"
     }
   ],
   "defaults": {

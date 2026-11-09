@@ -1,21 +1,15 @@
 import type { TechnologyConfig } from '../config/sources.schema'
 import type { CveRecord } from '../types'
 
-export type TechCategory = 'language' | 'framework'
+export const TOP_VULNERABLE_TECHS = 10
 
 export interface TechRankItem {
   id: string
   label: string
-  category: TechCategory
   count: number
   critical: number
   high: number
   kev: number
-}
-
-export interface TechRanking {
-  languages: TechRankItem[]
-  frameworks: TechRankItem[]
 }
 
 interface TechStats {
@@ -30,23 +24,25 @@ function emptyStats(): TechStats {
 }
 
 function sortByRisk(a: TechRankItem, b: TechRankItem): number {
-  return b.critical - a.critical || b.high - a.high || b.kev - a.kev || b.count - a.count
+  return b.critical - a.critical
+    || b.high - a.high
+    || b.kev - a.kev
+    || b.count - a.count
     || a.label.localeCompare(b.label)
 }
 
-/** Ranking de lenguajes y frameworks según CVEs del stack. */
-export function buildTechRanking(
+/** Top N tecnologías con CVEs, ordenadas por riesgo. Omite las que no tienen valor. */
+export function buildTopVulnerableTechs(
   rows: CveRecord[],
   technologies: TechnologyConfig[],
-): TechRanking {
-  const catalog = technologies.filter(
-    (tech): tech is TechnologyConfig & { category: TechCategory } =>
-      tech.category === 'language' || tech.category === 'framework',
-  )
+  limit = TOP_VULNERABLE_TECHS,
+): TechRankItem[] {
+  const catalog = new Map(technologies.map((tech) => [tech.id, tech]))
   const stats = new Map<string, TechStats>()
 
   for (const row of rows) {
     for (const id of row.technologies) {
+      if (!catalog.has(id)) continue
       const current = stats.get(id) ?? emptyStats()
       current.count += 1
       if (row.severity === 'CRITICAL') current.critical += 1
@@ -56,21 +52,21 @@ export function buildTechRanking(
     }
   }
 
-  const items: TechRankItem[] = catalog.map((tech) => {
-    const current = stats.get(tech.id) ?? emptyStats()
-    return {
-      id: tech.id,
+  const items: TechRankItem[] = []
+  for (const [id, current] of stats) {
+    // Solo listar si hay valor visible en el ranking (críticas, altas o KEV)
+    if (current.critical + current.high + current.kev === 0) continue
+    const tech = catalog.get(id)
+    if (!tech) continue
+    items.push({
+      id,
       label: tech.label,
-      category: tech.category,
       count: current.count,
       critical: current.critical,
       high: current.high,
       kev: current.kev,
-    }
-  })
-
-  return {
-    languages: items.filter((item) => item.category === 'language').sort(sortByRisk),
-    frameworks: items.filter((item) => item.category === 'framework').sort(sortByRisk),
+    })
   }
+
+  return items.sort(sortByRisk).slice(0, limit)
 }

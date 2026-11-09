@@ -72,7 +72,16 @@ function pickEpssIds(tagged: CveRecord[]): string[] {
 
 function fingerprintIds(ids: string[]): string {
   if (ids.length === 0) return '0'
-  return `${ids.length}:${ids[0]}:${ids[ids.length - 1]}:${ids[Math.floor(ids.length / 2)]}`
+  let hash = 2166136261
+  for (const id of ids) {
+    for (let index = 0; index < id.length; index += 1) {
+      hash ^= id.charCodeAt(index)
+      hash = Math.imul(hash, 16777619)
+    }
+    hash ^= 124
+    hash = Math.imul(hash, 16777619)
+  }
+  return `${ids.length}:${(hash >>> 0).toString(16)}`
 }
 
 export function useCves() {

@@ -9,17 +9,20 @@ import { useEffect, useState } from 'react'
 import { CveDrawer } from './components/CveDrawer'
 import { CveTable } from './components/CveTable'
 import { FiltersBar } from './components/FiltersBar'
+import { HeaderClock } from './components/HeaderClock'
 import { KpiRow } from './components/KpiRow'
 import { SeverityTimeline } from './components/SeverityTimeline'
 import { SourceStatus } from './components/SourceStatus'
-import { TechRelationsGraph } from './components/TechRelationsGraph'
+import { TechnologySelect } from './components/TechnologySelect'
+import { TopVulnerableTechsChart } from './components/TopVulnerableTechsChart'
 import { useCves, useFilteredCves } from './hooks/useCves'
 import { useSourcesConfig } from './hooks/useSourcesConfig'
-import { useFilters } from './store/filters'
+import { applyStackOnlyFromConfig, useFilters } from './store/filters'
 import type { CveRecord } from './types'
 
 const SIDEBAR_WIDTH = 248
 const SIDEBAR_STORAGE_KEY = 'noc-cve-sidebar-open'
+const HEADER_HEIGHT = 52
 
 function readSidebarOpen(): boolean {
   try {
@@ -31,15 +34,6 @@ function readSidebarOpen(): boolean {
   }
 }
 
-function useClock() {
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(t)
-  }, [])
-  return now
-}
-
 export default function App() {
   const { config } = useSourcesConfig()
   const { records, health, isFetching, refetchAll } = useCves()
@@ -48,7 +42,10 @@ export default function App() {
   const [selected, setSelected] = useState<CveRecord | null>(null)
   const [fs, setFs] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen)
-  const now = useClock()
+
+  useEffect(() => {
+    applyStackOnlyFromConfig(config.defaults.stackOnly)
+  }, [config.defaults.stackOnly])
 
   useEffect(() => {
     const onChange = () => setFs(Boolean(document.fullscreenElement))
@@ -70,9 +67,26 @@ export default function App() {
   const hasSourceError = health.some((h) => h.status === 'error')
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ position: 'sticky', top: 0, zIndex: 10, bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider' }}>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', px: 2, py: 1.25 }}>
+    <Box
+      sx={{
+        height: '100vh',
+        overflow: 'hidden',
+        bgcolor: 'background.default',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <Box
+        sx={{
+          flexShrink: 0,
+          height: HEADER_HEIGHT,
+          zIndex: 10,
+          bgcolor: 'background.default',
+          borderBottom: 1,
+          borderColor: 'divider',
+        }}
+      >
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', px: 2, height: '100%' }}>
           <Tooltip title={sidebarOpen ? 'Cerrar fuentes' : 'Abrir fuentes'}>
             <IconButton
               onClick={() => setSidebarOpen((open) => !open)}
@@ -85,14 +99,15 @@ export default function App() {
             </IconButton>
           </Tooltip>
           <ShieldIcon color="primary" />
-          <Typography variant="h1">NOC · CVE Watch</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
-            Multi-tecnología
+          <Typography
+            component="h1"
+            sx={{ fontSize: 16, fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}
+          >
+            Truper · NOC CVE Watch
           </Typography>
+          <TechnologySelect minWidth={280} />
           <Box sx={{ flex: 1 }} />
-          <Typography sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, fontSize: 13 }}>
-            {now.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'medium' })}
-          </Typography>
+          <HeaderClock />
           <Button size="small" startIcon={<RefreshIcon />} onClick={refetchAll} disabled={isFetching}>
             Actualizar
           </Button>
@@ -102,18 +117,27 @@ export default function App() {
             </IconButton>
           </Tooltip>
         </Stack>
-        <LinearProgress sx={{ visibility: isFetching ? 'visible' : 'hidden', height: 2 }} />
+        <LinearProgress
+          sx={{
+            visibility: isFetching ? 'visible' : 'hidden',
+            height: 2,
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            mt: '-2px',
+          }}
+        />
       </Box>
 
       <Box
         sx={{
           flex: 1,
+          minHeight: 0,
           display: 'grid',
           gridTemplateColumns: {
             xs: '1fr',
             md: sidebarOpen ? `${SIDEBAR_WIDTH}px minmax(0, 1fr)` : 'minmax(0, 1fr)',
           },
-          minHeight: 0,
         }}
       >
         <Paper
@@ -124,34 +148,48 @@ export default function App() {
             borderTop: 0,
             borderBottom: 0,
             borderLeft: 0,
-            position: { md: 'sticky' },
-            top: { md: 56 },
-            alignSelf: 'start',
-            maxHeight: { md: 'calc(100vh - 56px)' },
+            height: '100%',
             overflow: 'auto',
           }}
         >
           <SourceStatus health={health} onClose={() => setSidebarOpen(false)} />
         </Paper>
 
-        <Stack spacing={2} sx={{ px: 2, py: 2, minWidth: 0 }}>
+        <Box
+          sx={{
+            minWidth: 0,
+            minHeight: 0,
+            height: '100%',
+            display: 'grid',
+            gridTemplateRows: 'auto auto auto minmax(0, 1fr)',
+            gap: 1.5,
+            px: 2,
+            py: 1.5,
+            overflow: 'hidden',
+          }}
+        >
           <KpiRow rows={rows} />
 
           <Box
             sx={{
               display: 'grid',
-              gap: 2,
+              gap: 1.5,
               gridTemplateColumns: { xs: '1fr', lg: '1.15fr 1fr' },
               alignItems: 'stretch',
+              minHeight: 0,
+              height: { xs: 'auto', lg: 220 },
             }}
           >
             <SeverityTimeline rows={rows} days={days} />
-            <TechRelationsGraph rows={rows} technologies={config.technologies} />
+            <TopVulnerableTechsChart rows={rows} technologies={config.technologies} />
           </Box>
 
           <FiltersBar />
-          <CveTable rows={rows} onSelect={setSelected} />
-        </Stack>
+
+          <Box sx={{ minHeight: 0, height: '100%', overflow: 'hidden' }}>
+            <CveTable rows={rows} onSelect={setSelected} />
+          </Box>
+        </Box>
       </Box>
 
       <CveDrawer cve={selected} onClose={() => setSelected(null)} />

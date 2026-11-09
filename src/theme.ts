@@ -27,6 +27,16 @@ export const SEVERITY_INK: Record<Severity, string> = {
 }
 
 export const SURFACE = '#1a1a19'
+/**
+ * Señal KEV (explotada conocida): distinta de severidad.
+ * Alta = #ec835a; KEV = naranja vivo para no confundirlas en el top.
+ */
+export const KEV_COLOR = '#ff6b00'
+export const TEXT_PRIMARY = '#f0efec'
+export const TEXT_SECONDARY = '#c3c2b7'
+export const CHART_TICK = TEXT_SECONDARY
+export const CHART_GRID = 'rgba(240,239,236,0.07)'
+export const CHART_CURSOR = 'rgba(240,239,236,0.06)'
 export const MONO = '"JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace'
 
 export const theme = createTheme({
