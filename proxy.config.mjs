@@ -59,7 +59,7 @@ function headersFor(source) {
 export const sourcesConfig = config
 
 /** @type {Record<string, { target: string, path: string, headers: (env: Record<string, string | undefined>) => Record<string, string> }>} */
-export const upstreams = Object.fromEntries(
+const sourceUpstreams = Object.fromEntries(
   config.sources.map((source) => [
     source.proxyPrefix,
     {
@@ -69,3 +69,44 @@ export const upstreams = Object.fromEntries(
     },
   ]),
 )
+
+/** Proxies auxiliares: catálogos de versión (no son fuentes CVE). */
+const catalogUpstreams = {
+  '/api/maven-central': {
+    target: resolveTarget('https://repo1.maven.org'),
+    path: '/maven2',
+    headers: () => ({
+      Accept: 'application/xml,text/xml,*/*',
+      'User-Agent': 'noc-cve-dashboard',
+    }),
+  },
+  '/api/npm-registry': {
+    target: resolveTarget('https://registry.npmjs.org'),
+    path: '',
+    headers: () => ({
+      Accept: 'application/json',
+      'User-Agent': 'noc-cve-dashboard',
+    }),
+  },
+  '/api/pypi': {
+    target: resolveTarget('https://pypi.org'),
+    path: '/pypi',
+    headers: () => ({
+      Accept: 'application/json',
+      'User-Agent': 'noc-cve-dashboard',
+    }),
+  },
+  '/api/go-proxy': {
+    target: resolveTarget('https://proxy.golang.org'),
+    path: '',
+    headers: () => ({
+      Accept: 'application/json',
+      'User-Agent': 'noc-cve-dashboard',
+    }),
+  },
+}
+
+export const upstreams = {
+  ...sourceUpstreams,
+  ...catalogUpstreams,
+}
