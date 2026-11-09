@@ -32,7 +32,7 @@ function nextCursor(link: string | null): string | null {
   return url ? new URL(url).searchParams.get('after') : null
 }
 
-export function mapGithub(a: GhAdvisory): PartialCve {
+function mapGithub(a: GhAdvisory): PartialCve {
   const v4 = a.cvss_severities?.cvss_v4?.score
   const v3 = a.cvss_severities?.cvss_v3?.score ?? a.cvss?.score
   const score = v4 || v3 || undefined

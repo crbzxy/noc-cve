@@ -1,6 +1,8 @@
 import CloseIcon from '@mui/icons-material/Close'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { Alert, Box, Chip, Divider, Drawer, IconButton, Link, Stack, Typography } from '@mui/material'
+import { useMemo } from 'react'
+import { useSourcesConfig } from '../hooks/useSourcesConfig'
 import { MONO } from '../theme'
 import type { CveRecord } from '../types'
 import { SeverityChip } from './SeverityChip'
@@ -15,6 +17,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export function CveDrawer({ cve, onClose }: { cve: CveRecord | null; onClose: () => void }) {
+  const { config } = useSourcesConfig()
+  const techLabelById = useMemo(
+    () => Object.fromEntries(config.technologies.map((tech) => [tech.id, tech.label])),
+    [config.technologies],
+  )
   const ghsa = cve?.id.startsWith('GHSA-') ? cve.id : cve?.aliases.find((a) => a.startsWith('GHSA-'))
   return (
     <Drawer anchor="right" open={Boolean(cve)} onClose={onClose} slotProps={{ paper: { sx: { width: { xs: '100%', sm: 520 }, p: 3 } } }}>
@@ -49,7 +56,9 @@ export function CveDrawer({ cve, onClose }: { cve: CveRecord | null; onClose: ()
           {cve.technologies.length > 0 && (
             <Field label="Stack vigilado">
               <Stack direction="row" spacing={0.5} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                {cve.technologies.map((techId) => <Chip key={techId} size="small" color="secondary" label={techId} />)}
+                {cve.technologies.map((techId) => (
+                  <Chip key={techId} size="small" color="secondary" label={techLabelById[techId] ?? techId} />
+                ))}
               </Stack>
             </Field>
           )}

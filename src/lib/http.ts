@@ -43,12 +43,3 @@ export function normalizeSeverity(s?: string | null): import('../types').Severit
   }
 }
 
-/** Severidad CVSS v3/v4 a partir del score, para fuentes que solo traen número. */
-export function severityFromScore(score?: number): import('../types').Severity {
-  if (score == null) return 'NONE'
-  if (score >= 9) return 'CRITICAL'
-  if (score >= 7) return 'HIGH'
-  if (score >= 4) return 'MEDIUM'
-  if (score > 0) return 'LOW'
-  return 'NONE'
-}

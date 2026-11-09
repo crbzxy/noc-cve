@@ -87,3 +87,13 @@ export const useFilters = create<FiltersState>()(
     },
   ),
 )
+
+/** Aplica stackOnly del JSON solo si aún no hay preferencia persistida. */
+export function applyStackOnlyFromConfig(stackOnly: boolean) {
+  try {
+    if (localStorage.getItem('noc-cve-filters')) return
+  } catch {
+    // ignore
+  }
+  useFilters.setState({ stackOnly })
+}

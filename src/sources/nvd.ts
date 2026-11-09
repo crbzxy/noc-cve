@@ -51,7 +51,7 @@ function pickMetric(m: NvdCve['metrics']): { score?: number; sev?: string; versi
   return {}
 }
 
-export function mapNvd(cve: NvdCve): PartialCve {
+function mapNvd(cve: NvdCve): PartialCve {
   const metric = pickMetric(cve.metrics)
   const description =
     cve.descriptions.find((d) => d.lang === 'en')?.value ?? cve.descriptions[0]?.value ?? ''

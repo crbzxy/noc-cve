@@ -4,7 +4,7 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import { Box, Paper, Stack, Tooltip, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
-import { SEVERITY_COLOR } from '../theme'
+import { KEV_COLOR, SEVERITY_COLOR } from '../theme'
 import type { CveRecord } from '../types'
 
 function Kpi({
@@ -25,14 +25,14 @@ function Kpi({
       <Paper
         variant="outlined"
         sx={{
-          flex: '1 1 140px',
-          minWidth: 140,
-          px: 2,
-          py: 1.5,
+          flex: '1 1 120px',
+          minWidth: 120,
+          px: 1.5,
+          py: 1,
           borderLeft: accent ? `3px solid ${accent}` : undefined,
         }}
       >
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <Box sx={{ color: accent ?? 'text.secondary', display: 'flex', lineHeight: 0 }}>
             {icon}
           </Box>
@@ -43,9 +43,9 @@ function Kpi({
             <Typography
               component="div"
               sx={{
-                fontSize: '1.5rem',
+                fontSize: '1.25rem',
                 fontWeight: 700,
-                lineHeight: 1.2,
+                lineHeight: 1.15,
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
@@ -68,9 +68,10 @@ export function KpiRow({ rows }: { rows: CveRecord[] }) {
     <Box
       sx={{
         display: 'flex',
-        flexWrap: 'wrap',
-        gap: 1.5,
+        flexWrap: 'nowrap',
+        gap: 1,
         width: '100%',
+        overflow: 'hidden',
       }}
     >
       <Kpi icon={<BugReportIcon fontSize="small" />} label="Total CVEs" value={rows.length} hint="CVEs tras filtros" />
@@ -85,17 +86,17 @@ export function KpiRow({ rows }: { rows: CveRecord[] }) {
 
       <Kpi
         icon={<LocalFireDepartmentIcon fontSize="small" />}
-        label="Vulnerabilidades Explotadas Conocidas"
+        label="KEV explotadas"
         value={kev}
-        accent={SEVERITY_COLOR.HIGH}
-        hint={`${ransom} con uso en ransomware`}
+        accent={KEV_COLOR}
+        hint={`CISA KEV · ${ransom} con uso en ransomware`}
       />
 
       <Kpi
         icon={<TrendingUpIcon fontSize="small" />}
-        label="Probabilidad de explotación a 30 días"
+        label="EPSS ≥ 10 %"
         value={hotEpss}
-        hint="Probabilidad de explotación a 30 días"
+        hint="Probabilidad de explotación a 30 días (EPSS ≥ 10 %)"
       />
     </Box>
   )

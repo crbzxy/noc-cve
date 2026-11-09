@@ -17,12 +17,19 @@ export interface TechnologyConfig {
   id: string
   label: string
   keywords: string[]
-  /** Ids de otras tecnologías relacionadas (catálogo / proveedor). */
+  /**
+   * Metadato de catálogo (ops / docs). No alimenta matching ni UI actual.
+   * reserved for future relation views.
+   */
   related?: string[]
-  /** Incluir en el ranking de lenguajes / frameworks. */
+  /** Metadato de catálogo language/framework. */
   category?: TechnologyCategory
-  /** Marca de plataforma central en el catálogo (ej. SAP, LAMP). */
+  /** Metadato de plataforma central en el catálogo. */
   hub?: boolean
+  /** Nivel 1: área vigilada (TEL). */
+  group?: string
+  /** Nivel 2: stack TEL o categoría empresarial. */
+  subgroup?: string
 }
 
 export interface SourcesDefaults {
@@ -85,11 +92,22 @@ export const FALLBACK_SOURCES_CONFIG: AppSourcesConfig = {
 export function isAppSourcesConfig(value: unknown): value is AppSourcesConfig {
   if (!value || typeof value !== 'object') return false
   const candidate = value as AppSourcesConfig
-  return Array.isArray(candidate.sources) && Array.isArray(candidate.technologies) && Boolean(candidate.defaults)
-}
-
-export function listSourceIds(config: AppSourcesConfig): string[] {
-  return config.sources.filter((source) => source.role !== 'score').map((source) => source.id)
+  if (!Array.isArray(candidate.sources) || !Array.isArray(candidate.technologies) || !candidate.defaults) {
+    return false
+  }
+  if (typeof candidate.defaults.stackOnly !== 'boolean') return false
+  const sortBy = candidate.defaults.sortBy
+  const sortDir = candidate.defaults.sortDir
+  const sortByOk = sortBy === 'risk' || sortBy === 'severity' || sortBy === 'cvss'
+    || sortBy === 'epss' || sortBy === 'published'
+  const sortDirOk = sortDir === 'asc' || sortDir === 'desc'
+  if (!sortByOk || !sortDirOk) return false
+  return candidate.sources.every((source) =>
+    Boolean(source && typeof source.id === 'string' && typeof source.label === 'string'
+      && typeof source.proxyPrefix === 'string' && typeof source.baseUrl === 'string'))
+    && candidate.technologies.every((tech) =>
+      Boolean(tech && typeof tech.id === 'string' && typeof tech.label === 'string'
+        && Array.isArray(tech.keywords)))
 }
 
 export function findSource(config: AppSourcesConfig, id: string): SourceConfig | undefined {
