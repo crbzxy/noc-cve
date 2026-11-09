@@ -1,20 +1,21 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import type { AppSourcesConfig, WatchedPackage } from '../config/sources.schema'
+import type { WatchedPackage } from '../config/sources.schema'
 import { findSource } from '../config/sources.schema'
+import type { CorpusSnapshot } from '../corpus/types'
 import { aggregate, riskScore } from '../lib/aggregate'
+import {
+  CORPUS_REFRESH_MS,
+  CORPUS_WINDOW_DAYS,
+  filterByWindow,
+  filterInventoryByWindow,
+} from '../lib/corpusWindow'
 import { applyLibraryMatches } from '../lib/matchLibraries'
 import { applyTechnologyTags } from '../lib/matchTechnologies'
-import { packageKeyOf, resolveAppStack } from '../lib/resolveAppStack'
-import { fetchCveOrg } from '../sources/cveorg'
+import { packageKeyOf, resolveAppStackCached, type ResolvedAppStack } from '../lib/resolveAppStack'
+import { fetchCorpus, refreshCorpus } from '../sources/corpus'
 import { fetchEpss } from '../sources/epss'
-import { fetchEuvd } from '../sources/euvd'
-import { fetchGithub } from '../sources/github'
-import { fetchKev } from '../sources/kev'
-import { fetchNvd } from '../sources/nvd'
-import { fetchOsvMatch } from '../sources/osv'
-import { fetchVulncheckKev } from '../sources/vulncheckKev'
-import { fetchWordfence } from '../sources/wordfence'
+import { fetchOsvDetails, fetchOsvHits } from '../sources/osv'
 import { useFilters } from '../store/filters'
 import type { CveRecord, SourceId } from '../types'
 import { useAppsConfig } from './useAppsConfig'
@@ -54,8 +55,8 @@ function health(
   }
 }
 
-function sourceEnabledInConfig(config: AppSourcesConfig, id: string): boolean {
-  return findSource(config, id)?.enabled !== false
+function sourceEnabledInConfig(enabled: boolean | undefined): boolean {
+  return enabled !== false
 }
 
 function severityRank(record: CveRecord): number {
@@ -92,10 +93,6 @@ function fingerprintIds(ids: string[]): string {
   return `${ids.length}:${(hash >>> 0).toString(16)}`
 }
 
-function countBySource(records: CveRecord[], sourceId: SourceId): number {
-  return records.reduce((count, record) => (record.sources.includes(sourceId) ? count + 1 : count), 0)
-}
-
 function mergeWatchedPackages(
   fromConfig: WatchedPackage[],
   fromApp: WatchedPackage[],
@@ -107,134 +104,138 @@ function mergeWatchedPackages(
   return [...map.values()]
 }
 
+function corpusSourceHealth(
+  snapshot: CorpusSnapshot | undefined,
+  id: string,
+  label: string,
+  baseUrl: string | undefined,
+  refetch: () => void,
+  enabled: boolean,
+): SourceHealth {
+  if (!enabled) {
+    return { id, label, baseUrl, status: 'off', refetch }
+  }
+  const row = snapshot?.sources.find((source) => source.id === id)
+  if (!snapshot) {
+    return { id, label, baseUrl, status: 'loading', refetch }
+  }
+  if (!row) {
+    return { id, label, baseUrl, status: 'ok', count: 0, updatedAt: snapshot.generatedAt, refetch }
+  }
+  return {
+    id,
+    label: row.label || label,
+    baseUrl,
+    status: row.status === 'error' ? 'error' : row.status === 'off' ? 'off' : 'ok',
+    count: row.count,
+    error: row.error,
+    updatedAt: row.updatedAt ?? snapshot.generatedAt,
+    refetch,
+  }
+}
+
 export function useCves() {
   const { config } = useSourcesConfig()
   const { options: appOptions } = useAppsConfig()
   const { days, sources, refreshMin, selectedAppId } = useFilters()
-  const interval = refreshMin > 0 ? refreshMin * 60_000 : false
-  const opts = { refetchInterval: interval, staleTime: 5 * 60_000, retry: 1 } as const
+  const interval = refreshMin > 0 ? refreshMin * 60_000 : CORPUS_REFRESH_MS
+  const enrichmentOpts = { refetchInterval: interval, staleTime: CORPUS_REFRESH_MS, retry: 1 } as const
 
   const selectedApp = useMemo(
     () => appOptions.find((option) => option.id === selectedAppId) ?? null,
     [appOptions, selectedAppId],
   )
   const appStack = useMemo(
-    () => (selectedApp ? resolveAppStack(selectedApp.entry) : null),
+    () => (selectedApp ? resolveAppStackCached(selectedApp.id, selectedApp.entry) : null),
     [selectedApp],
   )
   const watchedPackages = useMemo(
     () => mergeWatchedPackages(config.watchedPackages ?? [], appStack?.watchedPackages ?? []),
     [config.watchedPackages, appStack],
   )
+  const watchedPackagesKey = useMemo(
+    () => fingerprintIds(watchedPackages.map((pkg) => packageKeyOf(pkg.ecosystem, pkg.name, pkg.version))),
+    [watchedPackages],
+  )
 
-  const nvdConfigOn = sourceEnabledInConfig(config, 'nvd')
-  const ghConfigOn = sourceEnabledInConfig(config, 'github')
-  const cveorgConfigOn = sourceEnabledInConfig(config, 'cveorg')
-  const wordfenceConfigOn = sourceEnabledInConfig(config, 'wordfence')
-  const osvConfigOn = sourceEnabledInConfig(config, 'osv')
-  const euvdConfigOn = sourceEnabledInConfig(config, 'euvd')
-  const kevConfigOn = sourceEnabledInConfig(config, 'kev')
-  const vulncheckConfigOn = sourceEnabledInConfig(config, 'vulncheck-kev')
-  const epssConfigOn = sourceEnabledInConfig(config, 'epss')
-
-  const nvdOn = nvdConfigOn && sources.includes('nvd')
-  const ghOn = ghConfigOn && sources.includes('github')
-  const cveorgOn = cveorgConfigOn && sources.includes('cveorg')
-  const wordfenceOn = wordfenceConfigOn && sources.includes('wordfence')
+  const osvConfigOn = sourceEnabledInConfig(findSource(config, 'osv')?.enabled)
+  const epssConfigOn = sourceEnabledInConfig(findSource(config, 'epss')?.enabled)
   const osvOn = osvConfigOn && sources.includes('osv') && watchedPackages.length > 0
-  const euvdOn = euvdConfigOn && sources.includes('euvd')
 
-  const nvd = useQuery({
-    queryKey: ['nvd', days],
-    queryFn: ({ signal }) => fetchNvd(days, signal),
-    enabled: nvdOn,
-    ...opts,
+  const corpus = useQuery({
+    queryKey: ['corpus'],
+    queryFn: ({ signal }) => fetchCorpus(signal),
+    staleTime: CORPUS_REFRESH_MS,
+    refetchInterval: interval,
+    gcTime: 30 * 60_000,
+    retry: 1,
+    placeholderData: keepPreviousData,
   })
-  const github = useQuery({
-    queryKey: ['github', days],
-    queryFn: ({ signal }) => fetchGithub(days, signal),
-    enabled: ghOn,
-    ...opts,
-  })
-  const cveorg = useQuery({
-    queryKey: ['cveorg', days],
-    queryFn: ({ signal }) => fetchCveOrg(days, signal),
-    enabled: cveorgOn,
-    ...opts,
-  })
-  const wordfence = useQuery({
-    queryKey: ['wordfence', days],
-    queryFn: ({ signal }) => fetchWordfence(days, signal),
-    enabled: wordfenceOn,
-    ...opts,
-    staleTime: 60 * 60_000,
-  })
-  const osv = useQuery({
-    queryKey: ['osv', watchedPackages],
-    queryFn: ({ signal }) => fetchOsvMatch(watchedPackages, signal),
+
+  const osvHits = useQuery({
+    queryKey: ['osv-hits', watchedPackagesKey],
+    queryFn: ({ signal }) => fetchOsvHits(watchedPackages, signal),
     enabled: osvOn,
-    ...opts,
-    staleTime: 60 * 60_000,
-  })
-  const euvd = useQuery({
-    queryKey: ['euvd', days],
-    queryFn: ({ signal }) => fetchEuvd(days, signal),
-    enabled: euvdOn,
-    ...opts,
-  })
-  const kev = useQuery({
-    queryKey: ['kev'],
-    queryFn: ({ signal }) => fetchKev(signal),
-    enabled: kevConfigOn,
-    ...opts,
-    staleTime: 60 * 60_000,
-  })
-  const vulncheckKev = useQuery({
-    queryKey: ['vulncheck-kev'],
-    queryFn: ({ signal }) => fetchVulncheckKev(signal),
-    enabled: vulncheckConfigOn,
-    ...opts,
-    staleTime: 60 * 60_000,
+    ...enrichmentOpts,
+    staleTime: 2 * 60 * 60_000,
+    gcTime: 4 * 60 * 60_000,
   })
 
-  const osvRecords = useMemo(
-    () => (osvOn ? osv.data?.records ?? [] : []),
-    [osvOn, osv.data],
-  )
   const packageHits = useMemo(
-    () => (osvOn ? osv.data?.packageHits ?? [] : []),
-    [osvOn, osv.data],
+    () => (osvOn ? osvHits.data?.packageHits ?? [] : []),
+    [osvOn, osvHits.data],
   )
 
-  const base = useMemo(
-    () =>
-      aggregate({
-        days,
-        lists: [
-          nvdOn ? nvd.data ?? [] : [],
-          ghOn ? github.data ?? [] : [],
-          cveorgOn ? cveorg.data ?? [] : [],
-          wordfenceOn ? wordfence.data ?? [] : [],
-          osvRecords,
-          euvdOn ? euvd.data ?? [] : [],
-        ],
-        kev: kevConfigOn ? kev.data : undefined,
-        vulncheckKev: vulncheckConfigOn ? vulncheckKev.data : undefined,
-      }),
-    [
-      days, nvdOn, ghOn, cveorgOn, wordfenceOn, euvdOn, kevConfigOn, vulncheckConfigOn,
-      nvd.data, github.data, cveorg.data, wordfence.data, osvRecords, euvd.data, kev.data, vulncheckKev.data,
-    ],
+  // Corpus completo por fuentes; la ventana de días se aplica al final (también con app).
+  const sourceFiltered = useMemo(() => {
+    const enabled = new Set(sources)
+    const all = corpus.data?.records ?? []
+    return all.filter((record) => record.sources.some((source) => enabled.has(source as SourceId)))
+  }, [corpus.data?.records, sources])
+
+  const withoutWordfence = useMemo(
+    () => sourceFiltered.filter((record) => record.sources.some((source) => source !== 'wordfence')),
+    [sourceFiltered],
   )
 
-  const tagged = useMemo(
-    () => applyTechnologyTags(base, config.technologies),
-    [base, config.technologies],
-  )
+  // App = inventario por versión (sin recorte por fecha). Sin app = feed de noticias por days.
+  const inventoryMode = Boolean(selectedAppId && (appStack?.libraries.length ?? 0) > 0)
+
+  const matchCorpus = useMemo(() => {
+    const base = inventoryMode ? withoutWordfence : sourceFiltered
+    return inventoryMode ? base : filterByWindow(base, days)
+  }, [inventoryMode, withoutWordfence, sourceFiltered, days])
+
+  const knownIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const record of matchCorpus) {
+      ids.add(record.id)
+      for (const alias of record.aliases) ids.add(alias)
+    }
+    return ids
+  }, [matchCorpus])
+
+  const osvDetails = useQuery({
+    queryKey: ['osv-details', watchedPackagesKey, inventoryMode ? 'inventory' : `news-${days}`],
+    queryFn: ({ signal }) => fetchOsvDetails(osvHits.data?.packageHits ?? [], knownIds, signal),
+    enabled: osvOn && Boolean(osvHits.data) && (osvHits.data?.packageHits.length ?? 0) > 0,
+    staleTime: 2 * 60 * 60_000,
+    gcTime: 4 * 60 * 60_000,
+    retry: 1,
+  })
+
+  const withOsvDetails = useMemo(() => {
+    if (!osvDetails.data || osvDetails.data.length === 0) return matchCorpus
+    const merged = aggregate({
+      days: CORPUS_WINDOW_DAYS,
+      lists: [matchCorpus, osvDetails.data],
+    })
+    return applyTechnologyTags(merged, config.technologies)
+  }, [matchCorpus, osvDetails.data, config.technologies])
 
   const withLibraries = useMemo(
-    () => applyLibraryMatches(tagged, appStack?.libraries ?? [], packageHits),
-    [tagged, appStack, packageHits],
+    () => applyLibraryMatches(withOsvDetails, appStack?.libraries ?? [], packageHits),
+    [withOsvDetails, appStack, packageHits],
   )
 
   const epssIds = useMemo(() => pickEpssIds(withLibraries), [withLibraries])
@@ -245,16 +246,21 @@ export function useCves() {
     queryFn: ({ signal }) => fetchEpss(epssIds, signal),
     enabled: epssConfigOn && epssIds.length > 0,
     staleTime: 6 * 60 * 60_000,
+    placeholderData: keepPreviousData,
     retry: 1,
   })
 
   const records: CveRecord[] = useMemo(() => {
-    if (!epss.data) return withLibraries
-    return withLibraries.map((c) => {
-      const score = epss.data.get(c.id)
-      return score ? { ...c, epss: score } : c
-    })
-  }, [withLibraries, epss.data])
+    const enriched = !epss.data
+      ? withLibraries
+      : withLibraries.map((c) => {
+        const score = epss.data.get(c.id)
+        return score ? { ...c, epss: score } : c
+      })
+    // Con app: puedes cambiar 24h/7d/…; CRITICAL/HIGH de libs no se ocultan por antigüedad.
+    if (inventoryMode) return filterInventoryByWindow(enriched, days)
+    return enriched
+  }, [withLibraries, epss.data, inventoryMode, days])
 
   const nvdMeta = findSource(config, 'nvd')
   const ghMeta = findSource(config, 'github')
@@ -266,49 +272,67 @@ export function useCves() {
   const vulncheckMeta = findSource(config, 'vulncheck-kev')
   const epssMeta = findSource(config, 'epss')
 
-  const healthList: SourceHealth[] = [
-    health('nvd', nvdMeta?.label ?? 'NVD', nvd, nvdOn, nvd.data?.length, nvdMeta?.baseUrl),
-    health('github', ghMeta?.label ?? 'GitHub', github, ghOn, github.data?.length, ghMeta?.baseUrl),
-    health('cveorg', cveorgMeta?.label ?? 'CVE.org', cveorg, cveorgOn, cveorg.data?.length, cveorgMeta?.baseUrl),
-    health('wordfence', wordfenceMeta?.label ?? 'Wordfence', wordfence, wordfenceOn, wordfence.data?.length, wordfenceMeta?.baseUrl),
-    health(
-      'osv',
-      osvMeta?.label ?? 'OSV',
-      osv,
-      osvConfigOn && sources.includes('osv'),
-      osvOn ? osvRecords.length : 0,
-      osvMeta?.baseUrl,
-    ),
-    health('euvd', euvdMeta?.label ?? 'EUVD', euvd, euvdOn, euvd.data?.length, euvdMeta?.baseUrl),
-    health('kev', kevMeta?.label ?? 'KEV', kev, kevConfigOn, kev.data ? countBySource(records, 'kev') : undefined, kevMeta?.baseUrl),
-    health(
-      'vulncheck-kev',
-      vulncheckMeta?.label ?? 'VulnCheck KEV',
-      vulncheckKev,
-      vulncheckConfigOn,
-      vulncheckKev.data ? countBySource(records, 'vulncheck-kev') : undefined,
-      vulncheckMeta?.baseUrl,
-    ),
-    health(
-      'epss',
-      epssMeta?.label ?? 'EPSS',
-      epss,
-      epssConfigOn && epssIds.length > 0,
-      epss.data?.size,
-      epssMeta?.baseUrl,
-    ),
-  ]
+  const reloadCorpus = () => {
+    void refreshCorpus()
+      .then(() => corpus.refetch())
+      .catch(() => corpus.refetch())
+  }
+
+  const healthList: SourceHealth[] = useMemo(() => {
+    const snapshot = corpus.data
+    return [
+      corpusSourceHealth(snapshot, 'nvd', nvdMeta?.label ?? 'NVD', nvdMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(nvdMeta?.enabled)),
+      corpusSourceHealth(snapshot, 'github', ghMeta?.label ?? 'GitHub', ghMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(ghMeta?.enabled)),
+      corpusSourceHealth(snapshot, 'cveorg', cveorgMeta?.label ?? 'CVE.org', cveorgMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(cveorgMeta?.enabled)),
+      corpusSourceHealth(snapshot, 'wordfence', wordfenceMeta?.label ?? 'Wordfence', wordfenceMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(wordfenceMeta?.enabled)),
+      health(
+        'osv',
+        osvMeta?.label ?? 'OSV',
+        osvHits,
+        osvConfigOn && sources.includes('osv'),
+        osvOn ? packageHits.reduce((sum, hit) => sum + hit.vulnIds.length, 0) : 0,
+        osvMeta?.baseUrl,
+      ),
+      corpusSourceHealth(snapshot, 'euvd', euvdMeta?.label ?? 'EUVD', euvdMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(euvdMeta?.enabled)),
+      corpusSourceHealth(snapshot, 'kev', kevMeta?.label ?? 'KEV', kevMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(kevMeta?.enabled)),
+      corpusSourceHealth(
+        snapshot,
+        'vulncheck-kev',
+        vulncheckMeta?.label ?? 'VulnCheck KEV',
+        vulncheckMeta?.baseUrl,
+        reloadCorpus,
+        sourceEnabledInConfig(vulncheckMeta?.enabled),
+      ),
+      health(
+        'epss',
+        epssMeta?.label ?? 'EPSS',
+        epss,
+        epssConfigOn && epssIds.length > 0,
+        epss.data?.size,
+        epssMeta?.baseUrl,
+      ),
+    ]
+  }, [
+    corpus.data, osvHits, epss, osvOn, osvConfigOn, epssConfigOn, epssIds.length, sources, packageHits,
+    nvdMeta, ghMeta, cveorgMeta, wordfenceMeta, osvMeta, euvdMeta, kevMeta, vulncheckMeta, epssMeta,
+    epss.data,
+  ])
 
   return {
     records,
     packageHits,
     appLibraries: appStack?.libraries ?? [],
-    libraryRiskLoading: Boolean(selectedAppId) && osvOn && osv.isFetching,
+    libraryRiskLoading: Boolean(selectedAppId) && osvOn && osvHits.isFetching,
     health: healthList,
-    isFetching:
-      nvd.isFetching || github.isFetching || cveorg.isFetching || wordfence.isFetching
-      || osv.isFetching || euvd.isFetching || kev.isFetching || vulncheckKev.isFetching || epss.isFetching,
-    refetchAll: () => healthList.forEach((h) => h.refetch()),
+    corpusGeneratedAt: corpus.data?.generatedAt ?? null,
+    corpusIngestMs: corpus.data?.ingestMs ?? null,
+    newCriticalIds: corpus.data?.newCriticalIds ?? [],
+    isFetching: corpus.isFetching || osvHits.isFetching || epss.isFetching,
+    refetchAll: () => {
+      reloadCorpus()
+      void osvHits.refetch()
+      void epss.refetch()
+    },
   }
 }
 
@@ -322,7 +346,7 @@ function filterCveRecords(
     technologies: string[]
     minEpss: number
     search: string
-    appStack: ReturnType<typeof resolveAppStack> | null
+    appStack: ResolvedAppStack | null
     selectedLibrary: string | null
     ignoreLibraryFilter?: boolean
   },
@@ -368,8 +392,11 @@ function filterCveRecords(
   return filtered
 }
 
-/** Aplica filtros de UI en un solo pase y ordena por riesgo. */
-export function useFilteredCves(records: CveRecord[]) {
+/**
+ * Un solo pase de filtros: scope de app (para librerías) + filas de tabla CVE.
+ * Evita recorrer dos veces el mismo arreglo de registros.
+ */
+export function useCveViews(records: CveRecord[]) {
   const { options: appOptions } = useAppsConfig()
   const {
     severities, sources, kevOnly, techAll, technologies, minEpss, search,
@@ -379,46 +406,11 @@ export function useFilteredCves(records: CveRecord[]) {
   const appStack = useMemo(() => {
     if (!selectedAppId) return null
     const option = appOptions.find((item) => item.id === selectedAppId)
-    return option ? resolveAppStack(option.entry) : null
+    return option ? resolveAppStackCached(option.id, option.entry) : null
   }, [appOptions, selectedAppId])
 
-  return useMemo(
-    () => filterCveRecords(records, {
-      severities: new Set(severities),
-      sources: new Set(sources),
-      kevOnly,
-      techAll,
-      technologies,
-      minEpss,
-      search,
-      appStack,
-      selectedLibrary,
-    }),
-    [
-      records, severities, sources, kevOnly, techAll, technologies, minEpss,
-      search, appStack, selectedLibrary,
-    ],
-  )
-}
-
-/**
- * Mismos filtros que la tabla CVE, pero sin filtrar por librería seleccionada.
- * Así el panel de librerías cuenta exactamente lo que verás al hacer clic en cada una.
- */
-export function useLibraryScopedCves(records: CveRecord[]) {
-  const { options: appOptions } = useAppsConfig()
-  const {
-    severities, sources, kevOnly, techAll, technologies, minEpss, search, selectedAppId,
-  } = useFilters()
-
-  const appStack = useMemo(() => {
-    if (!selectedAppId) return null
-    const option = appOptions.find((item) => item.id === selectedAppId)
-    return option ? resolveAppStack(option.entry) : null
-  }, [appOptions, selectedAppId])
-
-  return useMemo(
-    () => filterCveRecords(records, {
+  return useMemo(() => {
+    const libraryScopedRows = filterCveRecords(records, {
       severities: new Set(severities),
       sources: new Set(sources),
       kevOnly,
@@ -429,10 +421,23 @@ export function useLibraryScopedCves(records: CveRecord[]) {
       appStack,
       selectedLibrary: null,
       ignoreLibraryFilter: true,
-    }),
-    [
-      records, severities, sources, kevOnly, techAll, technologies, minEpss,
-      search, appStack,
-    ],
-  )
+    })
+    const rows = selectedLibrary
+      ? libraryScopedRows.filter((record) => record.matchedLibraries.includes(selectedLibrary))
+      : libraryScopedRows
+    return { rows, libraryScopedRows }
+  }, [
+    records, severities, sources, kevOnly, techAll, technologies, minEpss,
+    search, appStack, selectedLibrary,
+  ])
+}
+
+/** @deprecated Prefer useCveViews para un solo pase de filtros. */
+export function useFilteredCves(records: CveRecord[]) {
+  return useCveViews(records).rows
+}
+
+/** @deprecated Prefer useCveViews para un solo pase de filtros. */
+export function useLibraryScopedCves(records: CveRecord[]) {
+  return useCveViews(records).libraryScopedRows
 }

@@ -53,7 +53,7 @@ const defaults = {
   selectedLibrary: null as string | null,
   minEpss: 0,
   search: '',
-  refreshMin: 15,
+  refreshMin: 5,
 }
 
 export const useFilters = create<FiltersState>()(

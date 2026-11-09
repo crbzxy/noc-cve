@@ -31,8 +31,21 @@ async function readErrorMessage(res: Response): Promise<string> {
   return `${res.status} ${res.statusText}${rateHint}`
 }
 
+/** Base absoluta para ingesta Node (CORPUS_API_BASE); vacío en el browser. */
+export function getApiBase(): string {
+  const runtime = globalThis as { process?: { env?: Record<string, string | undefined> } }
+  const value = runtime.process?.env?.CORPUS_API_BASE
+  return typeof value === 'string' ? value.replace(/\/$/, '') : ''
+}
+
+function resolveUrl(url: string): string {
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  const base = getApiBase()
+  return base ? `${base}${url}` : url
+}
+
 export async function getJson<T>(url: string, signal?: AbortSignal): Promise<{ data: T; headers: Headers }> {
-  const res = await fetch(url, { signal })
+  const res = await fetch(resolveUrl(url), { signal })
   if (!res.ok) {
     throw new HttpError(res.status, await readErrorMessage(res))
   }
@@ -44,7 +57,7 @@ export async function postJson<T>(
   body: unknown,
   signal?: AbortSignal,
 ): Promise<{ data: T; headers: Headers }> {
-  const res = await fetch(url, {
+  const res = await fetch(resolveUrl(url), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(body),
