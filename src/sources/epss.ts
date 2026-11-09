@@ -47,7 +47,15 @@ export async function fetchEpss(ids: string[], signal?: AbortSignal): Promise<Ma
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, batches.length) }, worker))
 
   if (result.size === 0 && failures > 0) {
-    if (lastError instanceof HttpError) throw lastError
+    if (lastError instanceof HttpError) {
+      if (lastError.status === 502) {
+        throw new HttpError(
+          502,
+          'EPSS inaccesible desde el servidor — abre salida HTTPS a api.first.org (firewall/proxy).',
+        )
+      }
+      throw lastError
+    }
     throw lastError instanceof Error ? lastError : new Error(String(lastError))
   }
   return result

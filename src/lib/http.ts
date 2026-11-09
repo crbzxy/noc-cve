@@ -6,12 +6,35 @@ export class HttpError extends Error {
   }
 }
 
+type UpstreamErrorBody = {
+  error?: string
+  hint?: string
+  detail?: string
+}
+
+async function readErrorMessage(res: Response): Promise<string> {
+  const rateHint =
+    res.status === 403 || res.status === 429 ? ' (rate limit: agrega API key en .env)' : ''
+  try {
+    const text = await res.text()
+    if (!text) return `${res.status} ${res.statusText}${rateHint}`
+    try {
+      const parsed = JSON.parse(text) as UpstreamErrorBody
+      const parts = [parsed.error, parsed.hint, parsed.detail].filter(Boolean)
+      if (parts.length > 0) return parts.join(' — ')
+    } catch {
+      return text.slice(0, 240)
+    }
+  } catch {
+    // ignore body read errors
+  }
+  return `${res.status} ${res.statusText}${rateHint}`
+}
+
 export async function getJson<T>(url: string, signal?: AbortSignal): Promise<{ data: T; headers: Headers }> {
   const res = await fetch(url, { signal })
   if (!res.ok) {
-    const hint =
-      res.status === 403 || res.status === 429 ? ' (rate limit: agrega API key en .env)' : ''
-    throw new HttpError(res.status, `${res.status} ${res.statusText}${hint}`)
+    throw new HttpError(res.status, await readErrorMessage(res))
   }
   return { data: (await res.json()) as T, headers: res.headers }
 }
@@ -42,4 +65,3 @@ export function normalizeSeverity(s?: string | null): import('../types').Severit
       return 'NONE'
   }
 }
-
