@@ -1,6 +1,7 @@
 export const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'NONE'] as const
 export type Severity = (typeof SEVERITIES)[number]
 
+/** IDs de fuentes de listado/enriquecimiento (EPSS es score, no tag de fila). */
 export const SOURCES = ['nvd', 'kev', 'github'] as const
 export type SourceId = (typeof SOURCES)[number]
 
@@ -37,6 +38,12 @@ export interface CveRecord {
   packages: string[] // ecosistema:paquete (GitHub) o vendor:producto (KEV)
   cwes: string[]
   references: string[]
+  /** Ids de tecnologías del JSON que coinciden con este CVE. */
+  technologies: string[]
 }
 
 export type PartialCve = Partial<CveRecord> & Pick<CveRecord, 'id'> & { sources: SourceId[] }
+
+export function isSourceId(value: string): value is SourceId {
+  return (SOURCES as readonly string[]).includes(value)
+}
