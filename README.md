@@ -63,19 +63,18 @@ Producción (Node ≥ 20, sin dependencias extra):
 npm run build && npm start  # http://localhost:8080 — sirve dist/ y hace de proxy con caché de 60 s
 ```
 
-En QA/prod el dashboard y `/api/*` van por **HTTPS**:
+El browser usa el mismo esquema de la URL con la que abriste la app (`http://host:8082/` o `https://...`).
+Las fuentes externas (`baseUrl` en `sources.json`) siempre van por **HTTPS** vía el proxy.
+
+Para servir la app misma en HTTPS (opcional):
 
 ```bash
-npm run tls:init              # PEM autofirmados en certs/ (QA)
-# o PEM corporativos:
-# TLS_CERT=/ruta/cert.pem TLS_KEY=/ruta/key.pem
-PORT=8082 npm start           # https://host:8082
-# opcional: HTTP_REDIRECT_PORT=8080  → redirige http:// a https://
+npm run tls:init              # PEM autofirmados en certs/
+# o TLS_CERT=/ruta/cert.pem TLS_KEY=/ruta/key.pem
+PORT=8082 npm start           # entonces sí: https://host:8082/
 ```
 
-Abre `https://172.21.1.140:8082/` (no http). El cliente también fuerza HTTPS fuera de localhost.
-
-Todas las `baseUrl` de `sources.json` deben ser `https://`. El proxy no consulta upstreams por HTTP (salvo mock local).
+Sin PEM, el proceso escucha **HTTP** — abre `http://host:8082/`, no https.
 
 Modo demo, sin internet o si la red corporativa bloquea alguna fuente:
 
