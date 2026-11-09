@@ -1,33 +1,46 @@
-// Upstreams compartidos por el proxy de Vite (dev) y server/index.mjs (prod).
-// Las llaves viven SOLO del lado servidor: nunca se exponen al bundle.
-// MOCK_UPSTREAM=http://localhost:4010 redirige todas las fuentes al servidor demo (scripts/mock-upstream.mjs)
-const mock = globalThis.process?.env?.MOCK_UPSTREAM
-const t = (url) => mock ?? url
+// Upstreams compartidos por Vite (dev) y server/index.mjs (prod).
+// SSOT: config/sources.json (baseUrl, path, proxyPrefix). Secrets solo en .env.
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-export const upstreams = {
-  '/api/nvd': {
-    target: t('https://services.nvd.nist.gov'),
-    path: '/rest/json/cves/2.0',
-    headers: (env) => (env.NVD_API_KEY ? { apiKey: env.NVD_API_KEY } : {}),
-  },
-  '/api/kev': {
-    target: t('https://www.cisa.gov'),
-    path: '/sites/default/files/feeds/known_exploited_vulnerabilities.json',
-    headers: () => ({}),
-  },
-  '/api/github': {
-    target: t('https://api.github.com'),
-    path: '',
-    headers: (env) => ({
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
+const root = dirname(fileURLToPath(import.meta.url))
+const config = JSON.parse(readFileSync(join(root, 'config', 'sources.json'), 'utf8'))
+
+const mock = globalThis.process?.env?.MOCK_UPSTREAM
+const resolveTarget = (url) => mock ?? url
+
+function headersFor(source) {
+  return (env) => {
+    const base = {
+      Accept: 'application/json',
       'User-Agent': 'noc-cve-dashboard',
-      ...(env.GITHUB_TOKEN ? { Authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}),
-    }),
-  },
-  '/api/epss': {
-    target: t('https://api.first.org'),
-    path: '/data/v1/epss',
-    headers: () => ({}),
-  },
+    }
+    if (source.id === 'github') {
+      return {
+        ...base,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(env.GITHUB_TOKEN ? { Authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}),
+      }
+    }
+    if (source.authEnv === 'NVD_API_KEY' && env.NVD_API_KEY) {
+      return { ...base, apiKey: env.NVD_API_KEY }
+    }
+    return base
+  }
 }
+
+export const sourcesConfig = config
+
+/** @type {Record<string, { target: string, path: string, headers: (env: Record<string, string | undefined>) => Record<string, string> }>} */
+export const upstreams = Object.fromEntries(
+  config.sources.map((source) => [
+    source.proxyPrefix,
+    {
+      target: resolveTarget(source.baseUrl),
+      path: source.path ?? '',
+      headers: headersFor(source),
+    },
+  ]),
+)
