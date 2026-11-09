@@ -4,17 +4,21 @@ import MenuIcon from '@mui/icons-material/Menu'
 import MenuOpenIcon from '@mui/icons-material/MenuOpen'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import ShieldIcon from '@mui/icons-material/Shield'
-import { Box, Button, IconButton, LinearProgress, Paper, Stack, Tooltip, Typography } from '@mui/material'
+import { Box, Chip, IconButton, LinearProgress, Paper, Stack, Tooltip, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
+import { AppSelect } from './components/AppSelect'
 import { CveDrawer } from './components/CveDrawer'
 import { CveTable } from './components/CveTable'
+import { ExpandableModule } from './components/ExpandableModule'
 import { FiltersBar } from './components/FiltersBar'
 import { HeaderClock } from './components/HeaderClock'
 import { KpiRow } from './components/KpiRow'
+import { LibraryRiskPanel } from './components/LibraryRiskPanel'
 import { SeverityTimeline } from './components/SeverityTimeline'
 import { SourceStatus } from './components/SourceStatus'
 import { TechnologySelect } from './components/TechnologySelect'
 import { TopVulnerableTechsChart } from './components/TopVulnerableTechsChart'
+import { useAppsConfig } from './hooks/useAppsConfig'
 import { useCves, useFilteredCves } from './hooks/useCves'
 import { useSourcesConfig } from './hooks/useSourcesConfig'
 import { useFilters } from './store/filters'
@@ -22,26 +26,45 @@ import type { CveRecord } from './types'
 
 const SIDEBAR_WIDTH = 248
 const SIDEBAR_STORAGE_KEY = 'noc-cve-sidebar-open'
+const CHARTS_STORAGE_KEY = 'noc-cve-charts-open'
+const TABLE_STORAGE_KEY = 'noc-cve-table-open'
+const LIBS_STORAGE_KEY = 'noc-cve-libs-open'
 const HEADER_HEIGHT = 52
 
-function readSidebarOpen(): boolean {
+function readBooleanStorage(key: string, fallback: boolean): boolean {
   try {
-    const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY)
-    if (saved === null) return false
+    const saved = localStorage.getItem(key)
+    if (saved === null) return fallback
     return saved === 'true'
   } catch {
-    return false
+    return fallback
+  }
+}
+
+function persistBoolean(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, String(value))
+  } catch {
+    // ignore
   }
 }
 
 export default function App() {
   const { config } = useSourcesConfig()
-  const { records, health, isFetching, refetchAll } = useCves()
+  const { options: appOptions } = useAppsConfig()
+  const { records, libraryRisk, libraryRiskLoading, health, isFetching, refetchAll } = useCves()
   const rows = useFilteredCves(records)
   const days = useFilters((s) => s.days)
+  const selectedAppId = useFilters((s) => s.selectedAppId)
+  const selectedLibrary = useFilters((s) => s.selectedLibrary)
+  const setSelectedLibrary = useFilters((s) => s.setSelectedLibrary)
+  const selectedAppLabel = appOptions.find((option) => option.id === selectedAppId)?.label
   const [selected, setSelected] = useState<CveRecord | null>(null)
   const [fs, setFs] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen)
+  const [sidebarOpen, setSidebarOpen] = useState(() => readBooleanStorage(SIDEBAR_STORAGE_KEY, false))
+  const [chartsOpen, setChartsOpen] = useState(() => readBooleanStorage(CHARTS_STORAGE_KEY, false))
+  const [tableOpen, setTableOpen] = useState(() => readBooleanStorage(TABLE_STORAGE_KEY, true))
+  const [libsOpen, setLibsOpen] = useState(() => readBooleanStorage(LIBS_STORAGE_KEY, true))
 
   useEffect(() => {
     const onChange = () => setFs(Boolean(document.fullscreenElement))
@@ -49,18 +72,16 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', onChange)
   }, [])
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarOpen))
-    } catch {
-      // ignore
-    }
-  }, [sidebarOpen])
+  useEffect(() => { persistBoolean(SIDEBAR_STORAGE_KEY, sidebarOpen) }, [sidebarOpen])
+  useEffect(() => { persistBoolean(CHARTS_STORAGE_KEY, chartsOpen) }, [chartsOpen])
+  useEffect(() => { persistBoolean(TABLE_STORAGE_KEY, tableOpen) }, [tableOpen])
+  useEffect(() => { persistBoolean(LIBS_STORAGE_KEY, libsOpen) }, [libsOpen])
 
   const toggleFs = () =>
     document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()
 
   const hasSourceError = health.some((h) => h.status === 'error')
+  const vulnerableLibs = libraryRisk.filter((row) => row.status === 'vulnerable').length
 
   return (
     <Box
@@ -94,22 +115,27 @@ export default function App() {
               {sidebarOpen ? <MenuOpenIcon /> : <MenuIcon />}
             </IconButton>
           </Tooltip>
-          <ShieldIcon color="primary" />
+          <ShieldIcon color="primary" fontSize="small" />
           <Typography
             component="h1"
-            sx={{ fontSize: 16, fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}
+            sx={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}
           >
-            Truper · NOC CVE Watch
+            Truper · NOC CVE
           </Typography>
-          <TechnologySelect minWidth={280} />
+          <TechnologySelect minWidth={220} />
+          <AppSelect minWidth={240} />
           <Box sx={{ flex: 1 }} />
           <HeaderClock />
-          <Button size="small" startIcon={<RefreshIcon />} onClick={refetchAll} disabled={isFetching}>
-            Actualizar
-          </Button>
+          <Tooltip title="Actualizar fuentes">
+            <span>
+              <IconButton size="small" onClick={refetchAll} disabled={isFetching} aria-label="Actualizar">
+                <RefreshIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
           <Tooltip title={fs ? 'Salir de pantalla completa' : 'Modo pared'}>
             <IconButton onClick={toggleFs} aria-label="Pantalla completa" size="small">
-              {fs ? <FullscreenExitIcon /> : <FullscreenIcon />}
+              {fs ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
         </Stack>
@@ -156,35 +182,117 @@ export default function App() {
             minWidth: 0,
             minHeight: 0,
             height: '100%',
-            display: 'grid',
-            gridTemplateRows: 'auto auto auto minmax(0, 1fr)',
-            gap: 1.5,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
             px: 2,
             py: 1.5,
             overflow: 'hidden',
           }}
         >
-          <KpiRow rows={rows} />
+          <Box sx={{ flexShrink: 0 }}>
+            <KpiRow rows={rows} />
+          </Box>
 
-          <Box
-            sx={{
-              display: 'grid',
-              gap: 1.5,
-              gridTemplateColumns: { xs: '1fr', lg: '1.15fr 1fr' },
-              alignItems: 'stretch',
-              minHeight: 0,
-              height: { xs: 'auto', lg: 220 },
-            }}
+          <Box sx={{ flexShrink: 0 }}>
+            <FiltersBar />
+          </Box>
+
+          <ExpandableModule
+            id="noc-charts-panel"
+            title="Gráficas"
+            open={chartsOpen}
+            onToggle={() => setChartsOpen((open) => !open)}
+            defaultHeight={389}
+            fixedHeight={389}
           >
-            <SeverityTimeline rows={rows} days={days} />
-            <TopVulnerableTechsChart rows={rows} technologies={config.technologies} />
-          </Box>
+            <Box
+              sx={{
+                height: '100%',
+                minHeight: 389,
+                display: 'grid',
+                gap: 1,
+                p: 1,
+                boxSizing: 'border-box',
+                gridTemplateColumns: { xs: '1fr', lg: '1.15fr 1fr' },
+              }}
+            >
+              <SeverityTimeline rows={rows} days={days} />
+              <TopVulnerableTechsChart rows={rows} technologies={config.technologies} />
+            </Box>
+          </ExpandableModule>
 
-          <FiltersBar />
+          {selectedAppId && (
+            <ExpandableModule
+              id="noc-libs-panel"
+              title="Librerías"
+              count={libraryRisk.length}
+              open={libsOpen}
+              onToggle={() => setLibsOpen((open) => !open)}
+              defaultHeight={220}
+              trailing={(
+                <>
+                  {selectedAppLabel && (
+                    <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 220 }}>
+                      {selectedAppLabel}
+                    </Typography>
+                  )}
+                  {vulnerableLibs > 0 && (
+                    <Chip size="small" color="error" variant="outlined" label={`${vulnerableLibs} con CVE`} />
+                  )}
+                  {selectedLibrary && (
+                    <Chip
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      label={selectedLibrary}
+                      onDelete={(event) => {
+                        event.stopPropagation()
+                        setSelectedLibrary(null)
+                      }}
+                      onClick={(event) => event.stopPropagation()}
+                    />
+                  )}
+                </>
+              )}
+            >
+              <LibraryRiskPanel
+                rows={libraryRisk}
+                loading={libraryRiskLoading}
+                embedded
+                onLibrarySelect={(libraryName) => {
+                  if (libraryName) {
+                    setTableOpen(true)
+                    setLibsOpen(true)
+                  }
+                }}
+              />
+            </ExpandableModule>
+          )}
 
-          <Box sx={{ minHeight: 0, height: '100%', overflow: 'hidden' }}>
-            <CveTable rows={rows} onSelect={setSelected} />
-          </Box>
+          <ExpandableModule
+            id="noc-cve-table-panel"
+            title="CVEs"
+            count={rows.length}
+            open={tableOpen}
+            onToggle={() => setTableOpen((open) => !open)}
+            defaultHeight={320}
+            trailing={selectedLibrary ? (
+              <Chip
+                size="small"
+                color="warning"
+                variant="outlined"
+                label={selectedLibrary}
+                onDelete={(event) => {
+                  event.stopPropagation()
+                  setSelectedLibrary(null)
+                }}
+                onClick={(event) => event.stopPropagation()}
+              />
+            ) : undefined}
+          >
+            <CveTable rows={rows} onSelect={setSelected} embedded />
+          </ExpandableModule>
         </Box>
       </Box>
 

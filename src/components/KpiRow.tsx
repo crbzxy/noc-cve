@@ -25,11 +25,13 @@ function Kpi({
       <Paper
         variant="outlined"
         sx={{
-          flex: '1 1 120px',
-          minWidth: 120,
+          flex: '1 1 100px',
+          minWidth: 100,
           px: 1.5,
-          py: 1,
+          py: 0.75,
+          borderColor: 'divider',
           borderLeft: accent ? `3px solid ${accent}` : undefined,
+          bgcolor: 'transparent',
         }}
       >
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>

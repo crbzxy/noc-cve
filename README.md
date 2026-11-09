@@ -10,7 +10,10 @@ Un solo JSON controla:
 |---|---|
 | `sources` | Fuentes de datos: `id`, `label`, `enabled`, `role`, **`baseUrl`**, `path`, `proxyPrefix`, `authEnv` |
 | `technologies` | Lenguajes/tecnologías a vigilar (Magento, Java, Docker, Nginx, Redis, DBs, HTTP…) y sus keywords |
+| `watchedPackages` | Inventario opcional para OSV (`ecosystem` + `name` + `version`) |
 | `defaults` | Orden por riesgo (`sortBy` / `sortDir`) |
+
+Inventario de aplicaciones TEL / Truper en línea: `config/apps.json` (selector **Aplicación** junto a Tecnologías). Al elegir una app se filtran CVEs por su runtime/framework/DBs y por nombres de librerías; si hay versiones parseables también alimenta OSV.
 
 El proxy (Vite + `server/index.mjs`) y el frontend leen ese archivo. Tras editarlo:
 
@@ -20,7 +23,16 @@ npm run sync:sources   # copia a public/config/sources.json
 
 (`predev` / `prebuild` ya lo hacen solos.)
 
-**Secretos:** `NVD_API_KEY` y `GITHUB_TOKEN` siguen en `.env`, no en el JSON.
+**Secretos:** `NVD_API_KEY`, `GITHUB_TOKEN`, `VULNCHECK_TOKEN` y `WORDFENCE_API_KEY` viven en `.env`, no en el JSON.
+
+**OSV (rol `match`):** no lista por fecha; cruza `watchedPackages` del JSON (`ecosystem` + `name` + `version`) con `/v1/querybatch`. Ejemplo:
+
+```json
+"watchedPackages": [
+  { "ecosystem": "Packagist", "name": "magento/framework", "version": "103.0.4" },
+  { "ecosystem": "npm", "name": "axios", "version": "1.6.0" }
+]
+```
 
 **Red / QA:** el servidor debe poder salir por HTTPS a los `baseUrl` del JSON (sobre todo `https://api.first.org` para EPSS). Si el firewall bloquea FIRST, `/api/epss` responde **502** con un JSON que indica el host bloqueado; NVD/KEV pueden seguir en línea.
 
@@ -40,20 +52,26 @@ Agrega un objeto en `technologies`:
 
 Para acotar la tabla a un stack, usa el selector de tecnologías (TEL, por tech o Todas).
 
-| Fuente | Qué aporta | Límite sin credencial |
-|---|---|---|
-| **NVD (NIST)** API 2.0 | CVEs publicadas en la ventana, CVSS v4/v3.1/v2 y CWE | 5 req / 30 s (con `NVD_API_KEY`: 50) |
-| **GitHub Advisories** | Advisories revisados, paquetes por ecosistema y GHSA sin CVE | 60 req/h (con `GITHUB_TOKEN`: 5000) |
-| **CISA KEV** | CVEs explotadas activamente, fecha límite y ransomware | — |
-| **FIRST EPSS** | Probabilidad de explotación a 30 días | — |
+| Fuente | Rol | Qué aporta | Credencial |
+|---|---|---|---|
+| **CVE.org** Search API | list | Fuente canónica del programa CVE (respaldo si NVD se atrasa) | — |
+| **NVD (NIST)** API 2.0 | list | CVSS enriquecido, CWE, estado de análisis | `NVD_API_KEY` (opcional) |
+| **GitHub Advisories** | list | Paquetes por ecosistema y GHSA sin CVE | `GITHUB_TOKEN` (opcional) |
+| **OSV.dev** | match | Cruce por *paquete + versión* (npm, Packagist, Maven…) | — |
+| **ENISA EUVD** | enrich | Respaldo UE ante inestabilidad NVD/CVE | — |
+| **Wordfence Intelligence** | list | Plugins/temas WordPress poco cubiertos en NVD | `WORDFENCE_API_KEY` |
+| **CISA KEV** | enrich | Explotadas activamente (catálogo federal) | — |
+| **VulnCheck KEV** | enrich | KEV ampliado (mayor cobertura que CISA) | `VULNCHECK_TOKEN` |
+| **FIRST EPSS** | score | Probabilidad de explotación a 30 días | — |
 
-**Prioridad (orden por defecto):** KEV > ransomware > EPSS > match de stack > severidad > CVSS.
+**Prioridad (orden por defecto):** KEV > ransomware > EPSS > match de stack > severidad > CVSS.  
+**Fusión:** CVE.org pisa a NVD en CVSS/descripción; CISA KEV pisa a VulnCheck en el flag `kev`.
 
 ## Uso
 
 ```bash
 npm i
-cp .env.example .env        # opcional: NVD_API_KEY, GITHUB_TOKEN
+cp .env.example .env        # opcional: NVD_API_KEY, GITHUB_TOKEN, VULNCHECK_TOKEN, WORDFENCE_API_KEY
 npm run dev                 # http://localhost:5173
 ```
 
@@ -91,7 +109,7 @@ public/config/sources.json  copia servida al browser (sync)
 proxy.config.mjs            arma upstreams desde el JSON
 src/
   config/       schema + loader
-  sources/      nvd · github · kev · epss → PartialCve
+  sources/      nvd · cveorg · github · osv · euvd · wordfence · kev · vulncheckKev · epss
   lib/          aggregate · matchTechnologies · http
   hooks/        useCves · useSourcesConfig
   store/        filters (Zustand + persist)
@@ -100,4 +118,5 @@ src/
 
 - Las llaves de API solo viven en el proxy y nunca llegan al bundle.
 - Cada fuente se consulta por separado: si una falla, las demás siguen y el panel *Estado de fuentes* muestra el error (tooltip con `baseUrl`).
+- El proxy de producción reenvía GET y POST (necesario para OSV `querybatch`).
 - La severidad se muestra con icono y texto, no solo con color.

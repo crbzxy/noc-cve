@@ -1,7 +1,7 @@
 import SearchIcon from '@mui/icons-material/Search'
 import {
   Chip, FormControlLabel, InputAdornment, MenuItem, Paper, Stack, Switch, TextField,
-  ToggleButton, ToggleButtonGroup, Typography,
+  ToggleButton, ToggleButtonGroup, Tooltip, Typography,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useSourcesConfig } from '../hooks/useSourcesConfig'
@@ -11,6 +11,17 @@ import { SEVERITIES, SOURCES, isSourceId, type SourceId } from '../types'
 import { SEVERITY_ICON } from './SeverityChip'
 
 const WINDOWS: WindowDays[] = [1, 7, 15, 30, 90]
+
+const SOURCE_SHORT: Partial<Record<SourceId, string>> = {
+  nvd: 'NVD',
+  kev: 'KEV',
+  github: 'GH',
+  cveorg: 'CVE',
+  osv: 'OSV',
+  euvd: 'EUVD',
+  'vulncheck-kev': 'VC',
+  wordfence: 'WF',
+}
 
 function windowLabel(days: WindowDays): string {
   if (days === 1) return '24 h'
@@ -64,20 +75,21 @@ export function FiltersBar() {
           })}
         </Stack>
 
-        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-          <Typography variant="caption" color="text.secondary">Fuentes</Typography>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
           {(filterSources.length > 0 ? filterSources : SOURCES.map((id) => ({ id, label: id }))).map((source) => {
             const id = source.id as SourceId
             const on = f.sources.includes(id)
+            const short = SOURCE_SHORT[id] ?? source.label
             return (
-              <Chip
-                key={id}
-                size="small"
-                label={source.label}
-                color={on ? 'primary' : 'default'}
-                variant={on ? 'filled' : 'outlined'}
-                onClick={() => f.toggleSource(id)}
-              />
+              <Tooltip key={id} title={source.label}>
+                <Chip
+                  size="small"
+                  label={short}
+                  color={on ? 'primary' : 'default'}
+                  variant={on ? 'filled' : 'outlined'}
+                  onClick={() => f.toggleSource(id)}
+                />
+              </Tooltip>
             )
           })}
         </Stack>
