@@ -102,7 +102,9 @@ export function isAppSourcesConfig(value: unknown): value is AppSourcesConfig {
   if (!sortByOk || !sortDirOk) return false
   return candidate.sources.every((source) =>
     Boolean(source && typeof source.id === 'string' && typeof source.label === 'string'
-      && typeof source.proxyPrefix === 'string' && typeof source.baseUrl === 'string'))
+      && typeof source.proxyPrefix === 'string'
+      && typeof source.baseUrl === 'string'
+      && source.baseUrl.startsWith('https://')))
     && candidate.technologies.every((tech) =>
       Boolean(tech && typeof tech.id === 'string' && typeof tech.label === 'string'
         && Array.isArray(tech.keywords)))

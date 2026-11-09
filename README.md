@@ -63,6 +63,14 @@ Producción (Node ≥ 20, sin dependencias extra):
 npm run build && npm start  # http://localhost:8080 — sirve dist/ y hace de proxy con caché de 60 s
 ```
 
+En QA/prod usa HTTPS del proceso Node con PEM:
+
+```bash
+TLS_CERT=/ruta/cert.pem TLS_KEY=/ruta/key.pem PORT=8082 npm start
+```
+
+Todas las `baseUrl` de `sources.json` deben ser `https://`. El proxy no consulta upstreams por HTTP (salvo mock local).
+
 Modo demo, sin internet o si la red corporativa bloquea alguna fuente:
 
 ```bash
