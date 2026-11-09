@@ -1,6 +1,7 @@
 // Snapshot canónico del corpus CVE (memoria + archivo opcional).
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { installDirectCorpusFetch } from './directFetch.mjs'
@@ -9,6 +10,7 @@ const rootDir = dirname(fileURLToPath(import.meta.url))
 const projectRoot = resolveProjectRoot(rootDir)
 const dataDir = join(projectRoot, 'data')
 const snapshotPath = join(dataDir, 'corpus.json')
+const bundleScript = join(projectRoot, 'scripts', 'bundle-corpus.mjs')
 
 /** Vite puede cargar este módulo desde `.vite-temp`; no confiar solo en import.meta.url. */
 function resolveProjectRoot(moduleDir) {
@@ -19,18 +21,55 @@ function resolveProjectRoot(moduleDir) {
   return fromModule
 }
 
-function resolveIngestBundleUrl() {
-  const candidates = [
-    join(rootDir, 'ingest.bundle.mjs'),
+function ingestBundleCandidates() {
+  return [
     join(projectRoot, 'server', 'corpus', 'ingest.bundle.mjs'),
     join(process.cwd(), 'server', 'corpus', 'ingest.bundle.mjs'),
+    join(rootDir, 'ingest.bundle.mjs'),
   ]
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) return pathToFileURL(candidate).href
+}
+
+function findIngestBundlePath() {
+  return ingestBundleCandidates().find((candidate) => existsSync(candidate)) ?? null
+}
+
+function runBundleCorpus() {
+  return new Promise((resolve, reject) => {
+    if (!existsSync(bundleScript)) {
+      reject(new Error(`No existe ${bundleScript}`))
+      return
+    }
+    const child = spawn(process.execPath, [bundleScript], {
+      cwd: projectRoot,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: process.env,
+    })
+    let stderr = ''
+    child.stderr.on('data', (chunk) => { stderr += String(chunk) })
+    child.on('error', reject)
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve()
+        return
+      }
+      reject(new Error(`bundle:corpus salió con código ${code}${stderr ? `: ${stderr.slice(0, 400)}` : ''}`))
+    })
+  })
+}
+
+async function resolveIngestBundleUrl() {
+  const existing = findIngestBundlePath()
+  if (existing) return pathToFileURL(existing).href
+
+  console.warn('[corpus] Falta ingest.bundle.mjs — generando en el servidor…')
+  await runBundleCorpus()
+  const generated = findIngestBundlePath()
+  if (!generated) {
+    throw new Error(
+      'No está ingest.bundle.mjs tras bundle:corpus. Revisa que Vite esté instalado en el server.',
+    )
   }
-  throw new Error(
-    'No está ingest.bundle.mjs. Ejecuta `npm run bundle:corpus` (o predev/prestart) en el servidor.',
-  )
+  return pathToFileURL(generated).href
 }
 
 const REFRESH_MS = Number(process.env.CORPUS_REFRESH_MS ?? 5 * 60_000)
