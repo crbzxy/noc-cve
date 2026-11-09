@@ -8,7 +8,24 @@ const root = dirname(fileURLToPath(import.meta.url))
 const config = JSON.parse(readFileSync(join(root, 'config', 'sources.json'), 'utf8'))
 
 const mock = globalThis.process?.env?.MOCK_UPSTREAM
-const resolveTarget = (url) => mock ?? url
+
+function isLocalHttp(url) {
+  return url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')
+}
+
+/** Solo HTTPS hacia fuentes externas; HTTP queda permitido únicamente en mock local. */
+export function requireHttpsTarget(url, label = 'baseUrl') {
+  if (typeof url !== 'string' || url.length === 0) {
+    throw new Error(`${label} vacío: se requiere https://`)
+  }
+  if (url.startsWith('https://') || isLocalHttp(url)) return url
+  if (url.startsWith('http://')) {
+    return `https://${url.slice('http://'.length)}`
+  }
+  throw new Error(`${label} inválido (${url}): debe empezar con https://`)
+}
+
+const resolveTarget = (url) => requireHttpsTarget(mock ?? url)
 
 function headersFor(source) {
   return (env) => {

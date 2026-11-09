@@ -1,14 +1,20 @@
 // Servidor de producción sin dependencias: sirve dist/ y hace proxy a las fuentes.
 // Uso: npm run build && npm start   (lee NVD_API_KEY / GITHUB_TOKEN / PORT del entorno)
-import { createServer } from 'node:http'
+// TLS: TLS_CERT + TLS_KEY (rutas a PEM) → escucha HTTPS. Sin ellos, HTTP solo en local.
+import { readFileSync } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
+import { createServer as createHttpServer } from 'node:http'
+import { createServer as createHttpsServer } from 'node:https'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { upstreams } from '../proxy.config.mjs'
+import { requireHttpsTarget, upstreams } from '../proxy.config.mjs'
 
 const root = fileURLToPath(new URL('../dist', import.meta.url))
 const port = Number(process.env.PORT ?? 8080)
 const UPSTREAM_TIMEOUT_MS = Number(process.env.UPSTREAM_TIMEOUT_MS ?? 25_000)
+const tlsCert = process.env.TLS_CERT
+const tlsKey = process.env.TLS_KEY
+const useTls = Boolean(tlsCert && tlsKey)
 const mime = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
   '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon',
@@ -25,9 +31,26 @@ function jsonError(status, payload) {
   }
 }
 
+function isLocalHttp(url) {
+  return url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')
+}
+
 async function proxy(req, res, prefix, up) {
   const rest = req.url.slice(prefix.length)
-  const url = up.target + up.path + rest
+  let url
+  try {
+    const target = requireHttpsTarget(up.target, `upstream ${prefix}`)
+    url = target + up.path + rest
+    if (!url.startsWith('https://') && !isLocalHttp(url)) {
+      throw new Error(`Solo se permiten upstreams HTTPS (${url})`)
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    const err = jsonError(500, { error: message })
+    res.writeHead(err.status, err.headers).end(err.body)
+    return
+  }
+
   const hit = cache.get(url)
   if (hit && Date.now() - hit.at < TTL_MS) {
     res.writeHead(200, hit.headers).end(hit.body)
@@ -92,8 +115,23 @@ async function serveStatic(req, res) {
   res.writeHead(200, { 'content-type': mime[extname(file)] ?? 'application/octet-stream' }).end(data)
 }
 
-createServer((req, res) => {
+function onRequest(req, res) {
   const match = Object.entries(upstreams).find(([p]) => req.url === p || req.url.startsWith(p + '/') || req.url.startsWith(p + '?'))
   if (match) return proxy(req, res, match[0], match[1])
   serveStatic(req, res).catch(() => res.writeHead(500).end())
-}).listen(port, () => console.log(`NOC CVE dashboard → http://localhost:${port}`))
+}
+
+const server = useTls
+  ? createHttpsServer({
+      cert: readFileSync(tlsCert),
+      key: readFileSync(tlsKey),
+    }, onRequest)
+  : createHttpServer(onRequest)
+
+const scheme = useTls ? 'https' : 'http'
+server.listen(port, () => {
+  console.log(`NOC CVE dashboard → ${scheme}://localhost:${port}`)
+  if (!useTls) {
+    console.warn('Sin TLS_CERT/TLS_KEY: escuchando HTTP. En QA/prod define PEM para HTTPS.')
+  }
+})
