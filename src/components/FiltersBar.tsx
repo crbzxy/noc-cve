@@ -10,7 +10,13 @@ import { SEVERITY_COLOR, SEVERITY_INK, SEVERITY_LABEL } from '../theme'
 import { SEVERITIES, SOURCES, isSourceId, type SourceId } from '../types'
 import { SEVERITY_ICON } from './SeverityChip'
 
-const WINDOWS: WindowDays[] = [1, 3, 7, 14, 30]
+const WINDOWS: WindowDays[] = [1, 7, 15, 30, 90]
+
+function windowLabel(days: WindowDays): string {
+  if (days === 1) return '24 h'
+  if (days === 90) return '3 meses'
+  return `${days} d`
+}
 
 export function FiltersBar() {
   const f = useFilters()
@@ -31,7 +37,7 @@ export function FiltersBar() {
       <Stack direction="row" spacing={1.5} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
         <ToggleButtonGroup size="small" exclusive value={f.days} onChange={(_, v) => v && f.setDays(v)} aria-label="Ventana de tiempo">
           {WINDOWS.map((d) => (
-            <ToggleButton key={d} value={d} sx={{ px: 1.5 }}>{d === 1 ? '24 h' : `${d} d`}</ToggleButton>
+            <ToggleButton key={d} value={d} sx={{ px: 1.5 }}>{windowLabel(d)}</ToggleButton>
           ))}
         </ToggleButtonGroup>
 
@@ -91,7 +97,7 @@ export function FiltersBar() {
         </TextField>
 
         <TextField
-          select size="small" label="Refresco" value={f.refreshMin}
+          select size="small" label="Actualización" value={f.refreshMin}
           onChange={(e) => f.setRefreshMin(Number(e.target.value))} sx={{ width: 120 }}
         >
           {[0, 5, 15, 30, 60].map((v) => (

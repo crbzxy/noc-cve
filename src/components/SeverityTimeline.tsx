@@ -72,7 +72,7 @@ export function SeverityTimeline({ rows, days }: { rows: CveRecord[]; days: numb
             <CartesianGrid vertical={false} stroke={CHART_GRID} />
             <XAxis
               dataKey="day"
-              tickFormatter={(d: string) => format(new Date(`${d}T12:00:00`), days > 14 ? 'd/M' : 'EEE d', { locale: es })}
+              tickFormatter={(d: string) => format(new Date(`${d}T12:00:00`), days > 15 ? 'd/M' : 'EEE d', { locale: es })}
               tick={{ fill: CHART_TICK, fontSize: 10 }}
               axisLine={false}
               tickLine={false}

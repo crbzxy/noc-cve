@@ -2,7 +2,13 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { SEVERITIES, SOURCES, type Severity, type SourceId } from '../types'
 
-export type WindowDays = 1 | 3 | 7 | 14 | 30
+export type WindowDays = 1 | 7 | 15 | 30 | 90
+
+const WINDOW_DAYS: WindowDays[] = [1, 7, 15, 30, 90]
+
+export function isWindowDays(value: unknown): value is WindowDays {
+  return typeof value === 'number' && (WINDOW_DAYS as number[]).includes(value)
+}
 
 interface FiltersState {
   days: WindowDays
@@ -71,6 +77,7 @@ export const useFilters = create<FiltersState>()(
         return {
           ...current,
           ...saved,
+          days: isWindowDays(saved.days) ? saved.days : current.days,
           techAll: typeof saved.techAll === 'boolean'
             ? saved.techAll
             : Array.isArray(saved.technologies) && saved.technologies.length === 0
