@@ -17,7 +17,7 @@ import { TechnologySelect } from './components/TechnologySelect'
 import { TopVulnerableTechsChart } from './components/TopVulnerableTechsChart'
 import { useCves, useFilteredCves } from './hooks/useCves'
 import { useSourcesConfig } from './hooks/useSourcesConfig'
-import { applyStackOnlyFromConfig, useFilters } from './store/filters'
+import { useFilters } from './store/filters'
 import type { CveRecord } from './types'
 
 const SIDEBAR_WIDTH = 248
@@ -42,10 +42,6 @@ export default function App() {
   const [selected, setSelected] = useState<CveRecord | null>(null)
   const [fs, setFs] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen)
-
-  useEffect(() => {
-    applyStackOnlyFromConfig(config.defaults.stackOnly)
-  }, [config.defaults.stackOnly])
 
   useEffect(() => {
     const onChange = () => setFs(Boolean(document.fullscreenElement))

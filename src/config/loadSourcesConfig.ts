@@ -20,7 +20,6 @@ export async function loadSourcesConfig(signal?: AbortSignal): Promise<AppSource
       sources: data.sources,
       technologies: data.technologies,
       defaults: {
-        stackOnly: Boolean(data.defaults.stackOnly),
         sortBy: data.defaults.sortBy === 'risk' || data.defaults.sortBy === 'severity'
           || data.defaults.sortBy === 'cvss' || data.defaults.sortBy === 'epss'
           || data.defaults.sortBy === 'published'

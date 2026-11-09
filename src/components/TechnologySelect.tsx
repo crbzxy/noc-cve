@@ -203,7 +203,7 @@ export function TechnologySelect({ minWidth = 280 }: { minWidth?: number }) {
         <ListItemText
           primary={stack.name}
           secondary={stack.name === TEL_GROUP
-            ? `Solo stack TEL (${stack.techIds.length})`
+            ? `TEL (${stack.techIds.length})`
             : `${stack.techIds.length} tecnologías`}
           slotProps={{ primary: { sx: { fontWeight: 700 } } }}
         />

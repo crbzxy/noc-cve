@@ -10,7 +10,7 @@ Un solo JSON controla:
 |---|---|
 | `sources` | Fuentes de datos: `id`, `label`, `enabled`, `role`, **`baseUrl`**, `path`, `proxyPrefix`, `authEnv` |
 | `technologies` | Lenguajes/tecnologías a vigilar (Magento, Java, Docker, Nginx, Redis, DBs, HTTP…) y sus keywords |
-| `defaults` | `stackOnly`, orden por riesgo |
+| `defaults` | Orden por riesgo (`sortBy` / `sortDir`) |
 
 El proxy (Vite + `server/index.mjs`) y el frontend leen ese archivo. Tras editarlo:
 
@@ -38,7 +38,7 @@ Agrega un objeto en `technologies`:
 { "id": "nodejs", "label": "Node.js", "keywords": ["node.js", "nodejs", "npm"] }
 ```
 
-Con **Solo stack** activo (default), la tabla solo muestra CVEs que coincidan con esos keywords.
+Para acotar la tabla a un stack, usa el selector de tecnologías (TEL, por tech o Todas).
 
 | Fuente | Qué aporta | Límite sin credencial |
 |---|---|---|

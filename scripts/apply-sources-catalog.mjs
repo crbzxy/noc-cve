@@ -627,7 +627,6 @@ const incoming = {
     },
   ],
   defaults: {
-    stackOnly: true,
     sortBy: 'risk',
     sortDir: 'desc',
   },
