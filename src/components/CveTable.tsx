@@ -6,31 +6,46 @@ import {
 import { formatDistanceToNowStrict } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useMemo, useState } from 'react'
+import { useSourcesConfig } from '../hooks/useSourcesConfig'
+import { riskScore } from '../lib/aggregate'
 import { MONO } from '../theme'
-import type { CveRecord } from '../types'
+import type { CveRecord, SourceId } from '../types'
 import { SeverityChip } from './SeverityChip'
 
-type SortKey = 'risk' | 'cvss' | 'epss' | 'published'
+type SortKey = 'risk' | 'severity' | 'cvss' | 'epss' | 'published'
 const SEV_ORDER = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 }
 
+const SOURCE_SHORT: Record<SourceId, string> = { nvd: 'NVD', kev: 'KEV', github: 'GH' }
+
 const sorters: Record<Exclude<SortKey, 'risk'>, (a: CveRecord, b: CveRecord) => number> = {
+  severity: (a, b) =>
+    SEV_ORDER[a.severity] - SEV_ORDER[b.severity]
+    || (a.cvss ?? -1) - (b.cvss ?? -1),
   cvss: (a, b) => (a.cvss ?? -1) - (b.cvss ?? -1) || SEV_ORDER[a.severity] - SEV_ORDER[b.severity],
   epss: (a, b) => (a.epss?.score ?? -1) - (b.epss?.score ?? -1),
   published: (a, b) => (a.published ?? '').localeCompare(b.published ?? ''),
 }
 
-const SOURCE_SHORT = { nvd: 'NVD', kev: 'KEV', github: 'GH' } as const
-
 export function CveTable({ rows, onSelect }: { rows: CveRecord[]; onSelect: (c: CveRecord) => void }) {
-  const [sort, setSort] = useState<SortKey>('risk')
-  const [dir, setDir] = useState<'asc' | 'desc'>('desc')
+  const { config } = useSourcesConfig()
+  const [sort, setSort] = useState<SortKey>(config.defaults.sortBy)
+  const [dir, setDir] = useState<'asc' | 'desc'>(config.defaults.sortDir)
   const [page, setPage] = useState(0)
   const [perPage, setPerPage] = useState(25)
 
+  const techLabel = useMemo(
+    () => Object.fromEntries(config.technologies.map((tech) => [tech.id, tech.label])),
+    [config.technologies],
+  )
+
   const sorted = useMemo(() => {
-    if (sort === 'risk') return dir === 'desc' ? rows : [...rows].reverse() // rows ya vienen por riesgo
-    const s = [...rows].sort(sorters[sort])
-    return dir === 'desc' ? s.reverse() : s
+    const copy = [...rows]
+    if (sort === 'risk') {
+      copy.sort((a, b) => riskScore(a) - riskScore(b))
+    } else {
+      copy.sort(sorters[sort])
+    }
+    return dir === 'desc' ? copy.reverse() : copy
   }, [rows, sort, dir])
 
   const visible = sorted.slice(page * perPage, page * perPage + perPage)
@@ -52,12 +67,12 @@ export function CveTable({ rows, onSelect }: { rows: CveRecord[]; onSelect: (c: 
 
   return (
     <Paper>
-      <TableContainer sx={{ maxHeight: 'calc(100vh - 220px)' }}>
+      <TableContainer sx={{ maxHeight: 'calc(100vh - 420px)', minHeight: 280 }}>
         <Table stickyHeader size="small" aria-label="Lista de CVEs">
           <TableHead>
             <TableRow>
               {head('risk', 'ID / Prioridad')}
-              <TableCell>Severidad</TableCell>
+              {head('severity', 'Severidad')}
               {head('cvss', 'CVSS', 'right')}
               {head('epss', 'EPSS', 'right')}
               <TableCell>Descripción</TableCell>
@@ -69,7 +84,7 @@ export function CveTable({ rows, onSelect }: { rows: CveRecord[]; onSelect: (c: 
             {visible.map((c) => (
               <TableRow key={c.id} hover onClick={() => onSelect(c)} sx={{ cursor: 'pointer' }}>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                  <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
+                  <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                     {c.kev && (
                       <Tooltip title={`En CISA KEV desde ${c.kev.dateAdded}${c.kev.ransomware ? ' · usado en ransomware' : ''}`}>
                         <LocalFireDepartmentIcon fontSize="small" sx={{ color: c.kev.ransomware ? '#d03b3b' : '#ec835a' }} aria-label="Explotada activamente" />
@@ -95,15 +110,22 @@ export function CveTable({ rows, onSelect }: { rows: CveRecord[]; onSelect: (c: 
                   <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: c.title ? 1 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     {c.description || 'Sin descripción'}
                   </Typography>
-                  {c.packages.length > 0 && (
-                    <Typography variant="caption" sx={{ fontFamily: MONO, color: 'primary.light' }} noWrap component="div">
-                      {c.packages.slice(0, 3).join('  ')}{c.packages.length > 3 ? `  +${c.packages.length - 3}` : ''}
-                    </Typography>
+                  {(c.packages.length > 0 || c.technologies.length > 0) && (
+                    <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: 'wrap' }} useFlexGap>
+                      {c.technologies.slice(0, 4).map((techId) => (
+                        <Chip key={techId} size="small" color="secondary" variant="outlined" label={techLabel[techId] ?? techId} />
+                      ))}
+                      {c.packages.length > 0 && (
+                        <Typography variant="caption" sx={{ fontFamily: MONO, color: 'primary.light' }} noWrap>
+                          {c.packages.slice(0, 2).join('  ')}{c.packages.length > 2 ? `  +${c.packages.length - 2}` : ''}
+                        </Typography>
+                      )}
+                    </Stack>
                   )}
                 </TableCell>
                 <TableCell>
                   <Stack direction="row" spacing={0.5}>
-                    {c.sources.map((s) => <Chip key={s} size="small" variant="outlined" label={SOURCE_SHORT[s]} />)}
+                    {c.sources.map((s) => <Chip key={s} size="small" variant="outlined" label={SOURCE_SHORT[s] ?? s} />)}
                   </Stack>
                 </TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>
@@ -116,7 +138,9 @@ export function CveTable({ rows, onSelect }: { rows: CveRecord[]; onSelect: (c: 
             {visible.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7}>
-                  <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}>Sin CVEs con los filtros actuales.</Box>
+                  <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}>
+                    Sin CVEs con los filtros actuales. Prueba desactivar «Solo stack» o ampliar tecnologías en config/sources.json.
+                  </Box>
                 </TableCell>
               </TableRow>
             )}

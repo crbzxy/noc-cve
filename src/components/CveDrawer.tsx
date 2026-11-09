@@ -46,6 +46,13 @@ export function CveDrawer({ cve, onClose }: { cve: CveRecord | null; onClose: ()
 
           <Divider />
 
+          {cve.technologies.length > 0 && (
+            <Field label="Stack vigilado">
+              <Stack direction="row" spacing={0.5} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                {cve.technologies.map((techId) => <Chip key={techId} size="small" color="secondary" label={techId} />)}
+              </Stack>
+            </Field>
+          )}
           {cve.packages.length > 0 && (
             <Field label="Afecta a">
               <Stack direction="row" spacing={0.5} useFlexGap sx={{ flexWrap: "wrap" }}>
