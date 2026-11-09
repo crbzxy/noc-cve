@@ -1,20 +1,36 @@
 // Servidor de producción sin dependencias: sirve dist/ y hace proxy a las fuentes.
-// Uso: npm run build && npm start   (lee NVD_API_KEY / GITHUB_TOKEN / PORT del entorno)
-// TLS: TLS_CERT + TLS_KEY (rutas a PEM) → escucha HTTPS. Sin ellos, HTTP solo en local.
-import { readFileSync } from 'node:fs'
+// Uso: npm run build && npm start
+// HTTPS por defecto si hay TLS_CERT/TLS_KEY o certs/cert.pem+key.pem (npm run tls:init).
+import { existsSync, readFileSync } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { createServer as createHttpServer } from 'node:http'
 import { createServer as createHttpsServer } from 'node:https'
-import { extname, join, normalize } from 'node:path'
+import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { requireHttpsTarget, upstreams } from '../proxy.config.mjs'
 
-const root = fileURLToPath(new URL('../dist', import.meta.url))
+const rootDir = dirname(fileURLToPath(import.meta.url))
+const distRoot = fileURLToPath(new URL('../dist', import.meta.url))
 const port = Number(process.env.PORT ?? 8080)
 const UPSTREAM_TIMEOUT_MS = Number(process.env.UPSTREAM_TIMEOUT_MS ?? 25_000)
-const tlsCert = process.env.TLS_CERT
-const tlsKey = process.env.TLS_KEY
-const useTls = Boolean(tlsCert && tlsKey)
+const allowHttp = process.env.ALLOW_HTTP === '1'
+
+function resolveTlsMaterial() {
+  const envCert = process.env.TLS_CERT
+  const envKey = process.env.TLS_KEY
+  if (envCert && envKey && existsSync(envCert) && existsSync(envKey)) {
+    return { cert: readFileSync(envCert), key: readFileSync(envKey), source: 'env' }
+  }
+  const localCert = join(rootDir, '..', 'certs', 'cert.pem')
+  const localKey = join(rootDir, '..', 'certs', 'key.pem')
+  if (existsSync(localCert) && existsSync(localKey)) {
+    return { cert: readFileSync(localCert), key: readFileSync(localKey), source: 'certs/' }
+  }
+  return null
+}
+
+const tls = resolveTlsMaterial()
+const useTls = Boolean(tls) && !allowHttp
 const mime = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
   '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon',
@@ -105,11 +121,11 @@ async function proxy(req, res, prefix, up) {
 
 async function serveStatic(req, res) {
   const clean = normalize(decodeURIComponent(req.url.split('?')[0])).replace(/^(\.\.[/\\])+/, '')
-  let file = join(root, clean)
+  let file = join(distRoot, clean)
   try {
     if (!(await stat(file)).isFile()) throw new Error()
   } catch {
-    file = join(root, 'index.html')
+    file = join(distRoot, 'index.html')
   }
   const data = await readFile(file)
   res.writeHead(200, { 'content-type': mime[extname(file)] ?? 'application/octet-stream' }).end(data)
@@ -121,17 +137,29 @@ function onRequest(req, res) {
   serveStatic(req, res).catch(() => res.writeHead(500).end())
 }
 
+function redirectToHttps(req, res) {
+  const host = (req.headers.host ?? `localhost:${port}`).replace(/:\d+$/, `:${port}`)
+  res.writeHead(301, { Location: `https://${host}${req.url ?? '/'}` }).end()
+}
+
+if (!useTls) {
+  console.warn('Sin TLS_CERT/TLS_KEY ni certs/*.pem — escuchando HTTP.')
+  console.warn('En QA: npm run tls:init && npm start  (o define PEM corporativos).')
+  if (process.env.FORCE_HTTPS === '1' && !allowHttp) process.exit(1)
+}
+
 const server = useTls
-  ? createHttpsServer({
-      cert: readFileSync(tlsCert),
-      key: readFileSync(tlsKey),
-    }, onRequest)
+  ? createHttpsServer({ cert: tls.cert, key: tls.key }, onRequest)
   : createHttpServer(onRequest)
 
-const scheme = useTls ? 'https' : 'http'
 server.listen(port, () => {
-  console.log(`NOC CVE dashboard → ${scheme}://localhost:${port}`)
-  if (!useTls) {
-    console.warn('Sin TLS_CERT/TLS_KEY: escuchando HTTP. En QA/prod define PEM para HTTPS.')
-  }
+  const scheme = useTls ? 'https' : 'http'
+  console.log(`NOC CVE dashboard → ${scheme}://localhost:${port}${useTls ? ` (TLS: ${tls.source})` : ''}`)
 })
+
+const redirectPort = Number(process.env.HTTP_REDIRECT_PORT ?? 0)
+if (useTls && redirectPort > 0) {
+  createHttpServer(redirectToHttps).listen(redirectPort, () => {
+    console.log(`Redirect HTTP :${redirectPort} → HTTPS :${port}`)
+  })
+}

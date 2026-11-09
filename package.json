@@ -12,10 +12,12 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "tls:init": "node scripts/ensure-tls-certs.mjs",
+    "prestart": "node scripts/ensure-tls-certs.mjs",
     "start": "node server/index.mjs",
     "mock": "node scripts/mock-upstream.mjs",
     "dev:mock": "MOCK_UPSTREAM=http://localhost:4010 vite",
-    "start:mock": "MOCK_UPSTREAM=http://localhost:4010 node server/index.mjs"
+    "start:mock": "ALLOW_HTTP=1 MOCK_UPSTREAM=http://localhost:4010 node server/index.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
