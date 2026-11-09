@@ -12,12 +12,31 @@ type UpstreamErrorBody = {
   detail?: string
 }
 
+function detectFirewallBlock(text: string): string | null {
+  const lower = text.toLowerCase()
+  if (
+    lower.includes('fortiguard')
+    || lower.includes('web filter violation')
+    || lower.includes('web page blocked')
+    || lower.includes('access blocked')
+  ) {
+    return (
+      'FortiGuard bloqueó esta URL (política de Internet). '
+      + 'Pide a Seguridad liberar: api.osv.dev, api.first.org, services.nvd.nist.gov, '
+      + 'api.github.com, www.cve.org, euvdservices.enisa.europa.eu.'
+    )
+  }
+  return null
+}
+
 async function readErrorMessage(res: Response): Promise<string> {
   const rateHint =
     res.status === 403 || res.status === 429 ? ' (rate limit: agrega API key en .env)' : ''
   try {
     const text = await res.text()
     if (!text) return `${res.status} ${res.statusText}${rateHint}`
+    const blocked = detectFirewallBlock(text)
+    if (blocked) return blocked
     try {
       const parsed = JSON.parse(text) as UpstreamErrorBody
       const parts = [parsed.error, parsed.hint, parsed.detail].filter(Boolean)
@@ -29,6 +48,24 @@ async function readErrorMessage(res: Response): Promise<string> {
     // ignore body read errors
   }
   return `${res.status} ${res.statusText}${rateHint}`
+}
+
+async function parseJsonBody<T>(res: Response): Promise<T> {
+  const text = await res.text()
+  const blocked = detectFirewallBlock(text)
+  if (blocked) throw new HttpError(451, blocked)
+  const contentType = res.headers.get('content-type') ?? ''
+  if (!contentType.includes('json') && text.trimStart().startsWith('<')) {
+    throw new HttpError(
+      res.status || 502,
+      'La respuesta no es JSON (posible bloqueo del proxy/firewall corporativo).',
+    )
+  }
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new HttpError(res.status || 502, 'No se pudo parsear la respuesta JSON del upstream')
+  }
 }
 
 /** Base absoluta para ingesta Node (CORPUS_API_BASE); vacío en el browser. */
@@ -49,7 +86,7 @@ export async function getJson<T>(url: string, signal?: AbortSignal): Promise<{ d
   if (!res.ok) {
     throw new HttpError(res.status, await readErrorMessage(res))
   }
-  return { data: (await res.json()) as T, headers: res.headers }
+  return { data: await parseJsonBody<T>(res), headers: res.headers }
 }
 
 export async function postJson<T>(
@@ -66,7 +103,7 @@ export async function postJson<T>(
   if (!res.ok) {
     throw new HttpError(res.status, await readErrorMessage(res))
   }
-  return { data: (await res.json()) as T, headers: res.headers }
+  return { data: await parseJsonBody<T>(res), headers: res.headers }
 }
 
 export const sleep = (ms: number, signal?: AbortSignal) =>
