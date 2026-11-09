@@ -27,6 +27,12 @@ export function requireHttpsTarget(url, label = 'baseUrl') {
 
 const resolveTarget = (url) => requireHttpsTarget(mock ?? url)
 
+function bearerFromEnv(env, authEnv) {
+  if (!authEnv) return undefined
+  const token = env[authEnv]
+  return token ? `Bearer ${token}` : undefined
+}
+
 function headersFor(source) {
   return (env) => {
     const base = {
@@ -44,6 +50,8 @@ function headersFor(source) {
     if (source.authEnv === 'NVD_API_KEY' && env.NVD_API_KEY) {
       return { ...base, apiKey: env.NVD_API_KEY }
     }
+    const bearer = bearerFromEnv(env, source.authEnv)
+    if (bearer) return { ...base, Authorization: bearer }
     return base
   }
 }

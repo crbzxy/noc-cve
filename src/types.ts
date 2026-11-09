@@ -1,8 +1,17 @@
 export const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'NONE'] as const
 export type Severity = (typeof SEVERITIES)[number]
 
-/** IDs de fuentes de listado/enriquecimiento (EPSS es score, no tag de fila). */
-export const SOURCES = ['nvd', 'kev', 'github'] as const
+/** IDs de fuentes de listado/enriquecimiento/match (EPSS es score, no tag de fila). */
+export const SOURCES = [
+  'nvd',
+  'kev',
+  'github',
+  'cveorg',
+  'osv',
+  'euvd',
+  'vulncheck-kev',
+  'wordfence',
+] as const
 export type SourceId = (typeof SOURCES)[number]
 
 export interface KevInfo {
@@ -13,6 +22,8 @@ export interface KevInfo {
   vendor?: string
   product?: string
   name?: string
+  /** Catálogo de procedencia del flag de explotación. */
+  catalog?: 'cisa' | 'vulncheck'
 }
 
 export interface EpssInfo {
@@ -35,11 +46,13 @@ export interface CveRecord {
   status?: string // vulnStatus de NVD
   kev?: KevInfo
   epss?: EpssInfo
-  packages: string[] // ecosistema:paquete (GitHub) o vendor:producto (KEV)
+  packages: string[] // ecosistema:paquete (GitHub/OSV) o vendor:producto (KEV)
   cwes: string[]
   references: string[]
   /** Ids de tecnologías del JSON que coinciden con este CVE. */
   technologies: string[]
+  /** Librerías del inventario de app que relacionamos a este CVE (OSV o texto). */
+  matchedLibraries: string[]
 }
 
 export type PartialCve = Partial<CveRecord> & Pick<CveRecord, 'id'> & { sources: SourceId[] }

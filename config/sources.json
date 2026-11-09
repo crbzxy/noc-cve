@@ -37,8 +37,56 @@
       "proxyPrefix": "/api/epss",
       "baseUrl": "https://api.first.org",
       "path": "/data/v1/epss"
+    },
+    {
+      "id": "cveorg",
+      "label": "CVE.org (Search API)",
+      "enabled": true,
+      "role": "list",
+      "proxyPrefix": "/api/cveorg",
+      "baseUrl": "https://www.cve.org",
+      "path": "/restapiv1/search"
+    },
+    {
+      "id": "osv",
+      "label": "OSV.dev",
+      "enabled": true,
+      "role": "match",
+      "proxyPrefix": "/api/osv",
+      "baseUrl": "https://api.osv.dev",
+      "path": "/v1"
+    },
+    {
+      "id": "euvd",
+      "label": "ENISA EUVD",
+      "enabled": true,
+      "role": "enrich",
+      "proxyPrefix": "/api/euvd",
+      "baseUrl": "https://euvdservices.enisa.europa.eu",
+      "path": "/api/search"
+    },
+    {
+      "id": "vulncheck-kev",
+      "label": "VulnCheck KEV",
+      "enabled": true,
+      "role": "enrich",
+      "proxyPrefix": "/api/vckev",
+      "baseUrl": "https://api.vulncheck.com",
+      "path": "/v3/index/vulncheck-kev",
+      "authEnv": "VULNCHECK_TOKEN"
+    },
+    {
+      "id": "wordfence",
+      "label": "Wordfence Intelligence",
+      "enabled": true,
+      "role": "list",
+      "proxyPrefix": "/api/wordfence",
+      "baseUrl": "https://www.wordfence.com",
+      "path": "/api/intelligence/v3/vulnerabilities/production",
+      "authEnv": "WORDFENCE_API_KEY"
     }
   ],
+  "watchedPackages": [],
   "technologies": [
     {
       "id": "java",
@@ -617,6 +665,25 @@
         "nodejs",
         "docker",
         "linux"
+      ],
+      "subgroup": "Bases de datos"
+    },
+    {
+      "id": "sqlserver",
+      "label": "SQL Server",
+      "keywords": [
+        "sql server",
+        "mssql",
+        "microsoft sql",
+        "microsoft sql server",
+        "sqlserver",
+        "mssql-jdbc",
+        "jtds"
+      ],
+      "related": [
+        "java",
+        "spring",
+        "windows"
       ],
       "subgroup": "Bases de datos"
     },

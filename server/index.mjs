@@ -51,8 +51,15 @@ function isLocalHttp(url) {
   return url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')
 }
 
+async function readRequestBody(req) {
+  const chunks = []
+  for await (const chunk of req) chunks.push(chunk)
+  return Buffer.concat(chunks)
+}
+
 async function proxy(req, res, prefix, up) {
   const rest = req.url.slice(prefix.length)
+  const method = (req.method ?? 'GET').toUpperCase()
   let url
   try {
     const target = requireHttpsTarget(up.target, `upstream ${prefix}`)
@@ -67,7 +74,8 @@ async function proxy(req, res, prefix, up) {
     return
   }
 
-  const hit = cache.get(url)
+  const cacheable = method === 'GET' || method === 'HEAD'
+  const hit = cacheable ? cache.get(url) : undefined
   if (hit && Date.now() - hit.at < TTL_MS) {
     res.writeHead(200, hit.headers).end(hit.body)
     return
@@ -76,18 +84,24 @@ async function proxy(req, res, prefix, up) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
   try {
+    const requestHeaders = {
+      Accept: 'application/json',
+      'User-Agent': 'noc-cve-dashboard',
+      ...up.headers(process.env),
+    }
+    const inboundType = req.headers['content-type']
+    if (inboundType) requestHeaders['Content-Type'] = inboundType
+    const body = method === 'GET' || method === 'HEAD' ? undefined : await readRequestBody(req)
     const r = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'noc-cve-dashboard',
-        ...up.headers(process.env),
-      },
+      method,
+      headers: requestHeaders,
+      body,
       signal: controller.signal,
     })
-    const body = Buffer.from(await r.arrayBuffer())
+    const responseBody = Buffer.from(await r.arrayBuffer())
     if (!r.ok) {
-      const detail = body.length
-        ? body.toString('utf8').slice(0, 500)
+      const detail = responseBody.length
+        ? responseBody.toString('utf8').slice(0, 500)
         : `Upstream respondió ${r.status} sin cuerpo (¿firewall hacia ${up.target}?)`
       const err = jsonError(502, {
         error: `No se pudo consultar ${up.target}${up.path}`,
@@ -101,8 +115,8 @@ async function proxy(req, res, prefix, up) {
     const headers = { 'content-type': r.headers.get('content-type') ?? 'application/json' }
     const link = r.headers.get('link')
     if (link) headers.link = link
-    cache.set(url, { at: Date.now(), body, headers })
-    res.writeHead(r.status, headers).end(body)
+    if (cacheable) cache.set(url, { at: Date.now(), body: responseBody, headers })
+    res.writeHead(r.status, headers).end(responseBody)
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     const aborted = controller.signal.aborted

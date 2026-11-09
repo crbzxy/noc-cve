@@ -1,4 +1,4 @@
-// Servidor demo: imita NVD, CISA KEV, GitHub Advisories y EPSS con datos sintéticos.
+// Servidor demo: imita las fuentes configuradas con datos sintéticos.
 // Útil sin internet o cuando la red corporativa bloquea alguna fuente.
 //   npm run mock   (terminal 1)   →   npm run dev:mock   (terminal 2)
 import { createServer } from 'node:http'
@@ -50,7 +50,7 @@ const nvd = (url) => {
 const github = (url) => {
   const since = (url.searchParams.get('published') ?? '>=1970-01-01').slice(2)
   const all = Array.from({ length: 140 }, (_, i) => {
-    const shared = i % 3 === 0 ? cves[i] : null // ~1/3 comparten CVE con NVD → prueba la fusión
+    const shared = i % 3 === 0 ? cves[i] : null
     const [eco, name] = pick(pkgs)
     const score = Math.round((3 + rnd() * 7) * 10) / 10
     const ghsa = `GHSA-${Math.random().toString(36).slice(2, 6)}-${Math.random().toString(36).slice(2, 6)}-mock`
@@ -88,13 +88,120 @@ const epss = (url) => ({
   }),
 })
 
-createServer((req, res) => {
+const cveorg = () => ({
+  resultsTotal: 40,
+  resultsPerPage: 40,
+  pageNumber: 1,
+  results: cves.slice(0, 40).map((c) => ({
+    cveMetadata: {
+      cveId: c.id,
+      state: 'PUBLISHED',
+      datePublished: c.published,
+      dateUpdated: c.published,
+    },
+    containers: {
+      cna: {
+        title: `${c.vendor} ${c.product} ${c.kind}`,
+        descriptions: [{ lang: 'en', value: `Canonical CVE.org record for ${c.kind} in ${c.vendor} ${c.product}.` }],
+        affected: [{ vendor: c.vendor, product: c.product }],
+        problemTypes: [{ descriptions: [{ cweId: c.cwe, lang: 'en', description: c.cwe }] }],
+        references: [{ url: `https://www.cve.org/CVERecord?id=${c.id}` }],
+        metrics: c.hasCvss ? [{ cvssV3_1: { baseScore: c.score, baseSeverity: sevOf(c.score), version: '3.1' } }] : [],
+      },
+    },
+  })),
+})
+
+const euvd = () => ({
+  total: 25,
+  items: cves.slice(0, 25).map((c) => ({
+    id: `EUVD-2026-${c.id.slice(-5)}`,
+    description: `EUVD mirror: ${c.vendor} ${c.product} ${c.kind}`,
+    datePublished: c.published,
+    dateUpdated: c.published,
+    baseScore: c.score,
+    baseScoreVersion: '3.1',
+    references: `https://example.com/euvd/${c.id}`,
+    aliases: c.id,
+    assigner: 'mock',
+    enisaIdProduct: [{ product: { name: c.product, vendor: { name: c.vendor } }, product_version: '*' }],
+  })),
+})
+
+const vulncheck = () => ({
+  data: cves.filter((_, i) => i % 11 === 0).map((c) => ({
+    cve: [c.id],
+    vendorProject: c.vendor,
+    product: c.product,
+    vulnerabilityName: `${c.vendor} ${c.product} ${c.kind}`,
+    shortDescription: `${c.vendor} ${c.product} exploited in the wild (mock).`,
+    required_action: 'Patch or mitigate according to vendor guidance.',
+    knownRansomwareCampaignUse: rnd() > 0.7 ? 'Known' : 'Unknown',
+    date_added: c.published,
+    dueDate: new Date(Date.now() + 14 * 86_400_000).toISOString(),
+    cwes: [c.cwe],
+  })),
+  meta: { next_cursor: null },
+})
+
+const wordfence = () => Object.fromEntries(
+  cves.slice(0, 30).map((c, i) => {
+    const uuid = `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`
+    return [uuid, {
+      id: uuid,
+      title: `WordPress plugin mock ${i}: ${c.kind}`,
+      description: `Mock Wordfence entry related to ${c.kind}.`,
+      published: c.published,
+      cve: i % 2 === 0 ? c.id : null,
+      references: [`https://www.wordfence.com/threat-intel/vulnerabilities/${uuid}`],
+      software: [{ type: 'plugin', name: `mock-plugin-${i}`, slug: `mock-plugin-${i}` }],
+      cvss: { score: c.score, rating: sevOf(c.score), vector: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H' },
+      cwe: { id: c.cwe, name: c.cwe },
+      informational: false,
+    }]
+  }),
+)
+
+const osvBatch = async (req) => {
+  let raw = ''
+  for await (const chunk of req) raw += chunk
+  let count = 1
+  try {
+    const parsed = JSON.parse(raw || '{}')
+    count = Array.isArray(parsed.queries) ? Math.max(1, parsed.queries.length) : 1
+  } catch {
+    count = 1
+  }
+  const sample = { vulns: [{ id: 'GHSA-osv1-mock-0001', modified: iso(1) }, { id: cves[0].id, modified: iso(2) }] }
+  return { results: Array.from({ length: count }, () => sample) }
+}
+
+const osvVuln = (id) => ({
+  id,
+  summary: `OSV mock for ${id}`,
+  details: `Package-level advisory mock for ${id}.`,
+  aliases: id.startsWith('GHSA-') ? [cves[1].id] : [],
+  published: iso(3),
+  modified: iso(0),
+  severity: [{ type: 'CVSS_V3', score: '7.5' }],
+  affected: [{ package: { ecosystem: 'npm', name: 'lodash' } }],
+  references: [{ type: 'ADVISORY', url: `https://osv.dev/vulnerability/${id}` }],
+  database_specific: { severity: 'HIGH', cwe_ids: ['CWE-79'] },
+})
+
+createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x')
-  const body =
-    url.pathname.startsWith('/rest/json/cves') ? nvd(url)
-    : url.pathname.includes('known_exploited') ? kev()
-    : url.pathname.startsWith('/advisories') ? github(url)
-    : url.pathname.startsWith('/data/v1/epss') ? epss(url)
-    : null
+  let body = null
+  if (url.pathname.startsWith('/rest/json/cves')) body = nvd(url)
+  else if (url.pathname.includes('known_exploited')) body = kev()
+  else if (url.pathname.startsWith('/advisories')) body = github(url)
+  else if (url.pathname.startsWith('/data/v1/epss')) body = epss(url)
+  else if (url.pathname.startsWith('/restapiv1/search')) body = cveorg()
+  else if (url.pathname.startsWith('/api/search')) body = euvd()
+  else if (url.pathname.includes('vulncheck-kev')) body = vulncheck()
+  else if (url.pathname.includes('/intelligence/v3/vulnerabilities')) body = wordfence()
+  else if (url.pathname.endsWith('/querybatch') && req.method === 'POST') body = await osvBatch(req)
+  else if (url.pathname.includes('/vulns/')) body = osvVuln(url.pathname.split('/').pop())
+
   res.writeHead(body ? 200 : 404, { 'content-type': 'application/json' }).end(JSON.stringify(body ?? { error: 'not found' }))
 }).listen(port, () => console.log(`Mock upstream → http://localhost:${port}`))

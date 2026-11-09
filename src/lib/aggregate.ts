@@ -1,82 +1,112 @@
 import type { KevCatalog } from '../sources/kev'
-import type { CveRecord, EpssInfo, PartialCve, Severity, SourceId } from '../types'
+import type { VulncheckKevCatalog } from '../sources/vulncheckKev'
+import type { CveRecord, EpssInfo, KevInfo, PartialCve, Severity, SourceId } from '../types'
 import { daysAgo } from './http'
 
 const SEV_RANK: Record<Severity, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 }
 const STACK_MATCH_BOOST = 150
+const LIBRARY_MATCH_BOOST = 120
 const uniq = <T,>(xs: T[]) => [...new Set(xs)]
 
 function empty(id: string): CveRecord {
   return {
     id, aliases: [], description: '', severity: 'NONE', sources: [],
-    packages: [], cwes: [], references: [], technologies: [],
+    packages: [], cwes: [], references: [], technologies: [], matchedLibraries: [],
   }
 }
 
-/** Fusiona un parcial sobre el acumulado. NVD es la fuente canónica de CVSS; GitHub completa huecos. */
-function merge(acc: CveRecord, p: PartialCve): CveRecord {
-  const fromNvd = p.sources.includes('nvd')
-  const useScore = acc.cvss == null || (fromNvd && p.cvss != null)
+function isCanonical(sources: SourceId[]): boolean {
+  return sources.includes('cveorg') || sources.includes('nvd')
+}
+
+function prefersIncomingScore(acc: CveRecord, partial: PartialCve): boolean {
+  if (acc.cvss == null) return true
+  if (partial.sources.includes('cveorg')) return true
+  if (partial.sources.includes('nvd') && !acc.sources.includes('cveorg')) return true
+  return false
+}
+
+/** Fusiona un parcial. CVE.org > NVD son canónicos de CVSS/descripción. */
+function merge(acc: CveRecord, partial: PartialCve): CveRecord {
+  const fromCanonicalSource = isCanonical(partial.sources)
+  const useScore = prefersIncomingScore(acc, partial) && partial.cvss != null
+  const useDescription = (fromCanonicalSource && partial.description)
+    || (!acc.description && partial.description)
   return {
     ...acc,
-    aliases: uniq([...acc.aliases, ...(p.aliases ?? [])]),
-    title: acc.title ?? p.title,
-    description: (fromNvd && p.description) || acc.description || p.description || '',
+    aliases: uniq([...acc.aliases, ...(partial.aliases ?? [])]),
+    title: acc.title ?? partial.title,
+    description: useDescription ? (partial.description ?? acc.description) : acc.description,
     severity:
-      useScore && p.severity && p.severity !== 'NONE'
-        ? p.severity
+      useScore && partial.severity && partial.severity !== 'NONE'
+        ? partial.severity
         : acc.severity === 'NONE'
-          ? (p.severity ?? 'NONE')
+          ? (partial.severity ?? 'NONE')
           : acc.severity,
-    cvss: useScore ? (p.cvss ?? acc.cvss) : acc.cvss,
-    cvssVersion: useScore ? (p.cvssVersion ?? acc.cvssVersion) : acc.cvssVersion,
-    published: [acc.published, p.published].filter(Boolean).sort()[0],
-    modified: [acc.modified, p.modified].filter(Boolean).sort().at(-1),
-    status: acc.status ?? p.status,
-    sources: uniq<SourceId>([...acc.sources, ...p.sources]),
-    packages: uniq([...acc.packages, ...(p.packages ?? [])]),
-    cwes: uniq([...acc.cwes, ...(p.cwes ?? [])]),
-    references: uniq([...acc.references, ...(p.references ?? [])]),
-    technologies: uniq([...acc.technologies, ...(p.technologies ?? [])]),
+    cvss: useScore ? (partial.cvss ?? acc.cvss) : acc.cvss,
+    cvssVersion: useScore ? (partial.cvssVersion ?? acc.cvssVersion) : acc.cvssVersion,
+    published: [acc.published, partial.published].filter(Boolean).sort()[0],
+    modified: [acc.modified, partial.modified].filter(Boolean).sort().at(-1),
+    status: acc.status ?? partial.status,
+    sources: uniq<SourceId>([...acc.sources, ...partial.sources]),
+    packages: uniq([...acc.packages, ...(partial.packages ?? [])]),
+    cwes: uniq([...acc.cwes, ...(partial.cwes ?? [])]),
+    references: uniq([...acc.references, ...(partial.references ?? [])]),
+    technologies: uniq([...acc.technologies, ...(partial.technologies ?? [])]),
+    matchedLibraries: uniq([...acc.matchedLibraries, ...(partial.matchedLibraries ?? [])]),
   }
 }
 
-export function aggregate(
+function applyKevCatalog(
+  map: Map<string, CveRecord>,
   days: number,
-  nvd: PartialCve[] = [],
-  github: PartialCve[] = [],
-  kev?: KevCatalog,
-  epss?: Map<string, EpssInfo>,
-): CveRecord[] {
-  const map = new Map<string, CveRecord>()
-  const add = (p: PartialCve) => map.set(p.id, merge(map.get(p.id) ?? empty(p.id), p))
-
-  nvd.forEach(add)
-  github.forEach(add)
-
-  // KEV: entradas añadidas dentro de la ventana entran a la lista (aunque el CVE sea viejo)
-  // y todo CVE ya listado que esté en el catálogo se marca como explotado.
-  if (kev) {
-    const since = daysAgo(days).toISOString().slice(0, 10)
-    for (const [id, k] of kev.byId) {
-      if (k.dateAdded < since) continue
-      add({
-        id, sources: ['kev'], description: k.description, title: k.name,
-        cwes: k.cwes, packages: [`${k.vendor}:${k.product}`],
-        // dateAdded solo como fecha de referencia si ninguna otra fuente trae publicación
-        published: map.get(id)?.published ? undefined : `${k.dateAdded}T00:00:00.000Z`,
-      })
-    }
-    for (const rec of map.values()) {
-      const k = kev.byId.get(rec.id)
-      if (!k) continue
-      const { description: _d, cwes: _c, ...info } = k
-      rec.kev = info
-      if (!rec.sources.includes('kev')) rec.sources.push('kev')
-    }
+  catalog: { byId: Map<string, KevInfo & { description: string; cwes: string[] }> },
+  sourceId: SourceId,
+): void {
+  const since = daysAgo(days).toISOString().slice(0, 10)
+  const add = (partial: PartialCve) => map.set(partial.id, merge(map.get(partial.id) ?? empty(partial.id), partial))
+  for (const [id, entry] of catalog.byId) {
+    if (entry.dateAdded < since) continue
+    add({
+      id,
+      sources: [sourceId],
+      description: entry.description,
+      title: entry.name,
+      cwes: entry.cwes,
+      packages: entry.vendor && entry.product ? [`${entry.vendor}:${entry.product}`] : [],
+      published: map.get(id)?.published ? undefined : `${entry.dateAdded}T00:00:00.000Z`,
+    })
   }
+  for (const record of map.values()) {
+    const entry = catalog.byId.get(record.id)
+    if (!entry) continue
+    const { description: _description, cwes: _cwes, ...info } = entry
+    if (!record.kev || info.catalog === 'cisa') record.kev = info
+    if (!record.sources.includes(sourceId)) record.sources.push(sourceId)
+  }
+}
 
-  if (epss) for (const rec of map.values()) rec.epss = epss.get(rec.id)
+export interface AggregateInput {
+  days: number
+  lists?: PartialCve[][]
+  kev?: KevCatalog
+  vulncheckKev?: VulncheckKevCatalog
+  epss?: Map<string, EpssInfo>
+}
+
+export function aggregate(input: AggregateInput): CveRecord[] {
+  const map = new Map<string, CveRecord>()
+  const add = (partial: PartialCve) => map.set(partial.id, merge(map.get(partial.id) ?? empty(partial.id), partial))
+
+  for (const list of input.lists ?? []) list.forEach(add)
+
+  // VulnCheck primero; CISA pisa el flag kev cuando ambos coinciden.
+  if (input.vulncheckKev) applyKevCatalog(map, input.days, input.vulncheckKev, 'vulncheck-kev')
+  if (input.kev) applyKevCatalog(map, input.days, input.kev, 'kev')
+
+  if (input.epss) {
+    for (const record of map.values()) record.epss = input.epss.get(record.id)
+  }
 
   return [...map.values()]
 }
@@ -88,6 +118,7 @@ export function riskScore(c: CveRecord): number {
     (c.kev?.ransomware ? 200 : 0) +
     (c.epss?.score ?? 0) * 500 +
     (c.technologies.length > 0 ? STACK_MATCH_BOOST : 0) +
+    (c.matchedLibraries.length > 0 ? LIBRARY_MATCH_BOOST : 0) +
     SEV_RANK[c.severity] * 40 +
     (c.cvss ?? 0) * 2
   )

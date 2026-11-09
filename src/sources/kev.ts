@@ -40,6 +40,7 @@ export async function fetchKev(signal?: AbortSignal): Promise<KevCatalog> {
       vendor: v.vendorProject,
       product: v.product,
       name: v.vulnerabilityName,
+      catalog: 'cisa',
       description: v.shortDescription,
       cwes: v.cwes ?? [],
     })

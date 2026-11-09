@@ -39,6 +39,23 @@ export async function getJson<T>(url: string, signal?: AbortSignal): Promise<{ d
   return { data: (await res.json()) as T, headers: res.headers }
 }
 
+export async function postJson<T>(
+  url: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<{ data: T; headers: Headers }> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+    signal,
+  })
+  if (!res.ok) {
+    throw new HttpError(res.status, await readErrorMessage(res))
+  }
+  return { data: (await res.json()) as T, headers: res.headers }
+}
+
 export const sleep = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
     const t = setTimeout(resolve, ms)

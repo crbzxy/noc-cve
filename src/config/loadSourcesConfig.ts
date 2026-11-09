@@ -19,6 +19,7 @@ export async function loadSourcesConfig(signal?: AbortSignal): Promise<AppSource
     return {
       sources: data.sources,
       technologies: data.technologies,
+      watchedPackages: data.watchedPackages ?? [],
       defaults: {
         sortBy: data.defaults.sortBy === 'risk' || data.defaults.sortBy === 'severity'
           || data.defaults.sortBy === 'cvss' || data.defaults.sortBy === 'epss'

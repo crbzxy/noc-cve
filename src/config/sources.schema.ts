@@ -1,4 +1,4 @@
-export type SourceRole = 'list' | 'enrich' | 'score'
+export type SourceRole = 'list' | 'enrich' | 'score' | 'match'
 
 export interface SourceConfig {
   id: string
@@ -32,6 +32,14 @@ export interface TechnologyConfig {
   subgroup?: string
 }
 
+/** Paquete vigilado para cruces OSV (ecosystem + name; version opcional = cualquier versión afectada). */
+export interface WatchedPackage {
+  ecosystem: string
+  name: string
+  /** Si falta, OSV responde con vulns conocidas del paquete (sin afirmar versión exacta). */
+  version?: string
+}
+
 export interface SourcesDefaults {
   sortBy: 'risk' | 'severity' | 'cvss' | 'epss' | 'published'
   sortDir: 'asc' | 'desc'
@@ -41,51 +49,114 @@ export interface AppSourcesConfig {
   sources: SourceConfig[]
   technologies: TechnologyConfig[]
   defaults: SourcesDefaults
+  watchedPackages?: WatchedPackage[]
 }
 
+const CORE_SOURCES: SourceConfig[] = [
+  {
+    id: 'nvd',
+    label: 'NVD (NIST)',
+    enabled: true,
+    role: 'list',
+    proxyPrefix: '/api/nvd',
+    baseUrl: 'https://services.nvd.nist.gov',
+    path: '/rest/json/cves/2.0',
+    authEnv: 'NVD_API_KEY',
+  },
+  {
+    id: 'github',
+    label: 'GitHub Advisories',
+    enabled: true,
+    role: 'list',
+    proxyPrefix: '/api/github',
+    baseUrl: 'https://api.github.com',
+    path: '/advisories',
+    authEnv: 'GITHUB_TOKEN',
+  },
+  {
+    id: 'kev',
+    label: 'CISA KEV',
+    enabled: true,
+    role: 'enrich',
+    proxyPrefix: '/api/kev',
+    baseUrl: 'https://www.cisa.gov',
+    path: '/sites/default/files/feeds/known_exploited_vulnerabilities.json',
+  },
+  {
+    id: 'epss',
+    label: 'FIRST EPSS',
+    enabled: true,
+    role: 'score',
+    proxyPrefix: '/api/epss',
+    baseUrl: 'https://api.first.org',
+    path: '/data/v1/epss',
+  },
+]
+
+const TRUTH_SOURCES: SourceConfig[] = [
+  {
+    id: 'cveorg',
+    label: 'CVE.org (Search API)',
+    enabled: true,
+    role: 'list',
+    proxyPrefix: '/api/cveorg',
+    baseUrl: 'https://www.cve.org',
+    path: '/restapiv1/search',
+  },
+  {
+    id: 'osv',
+    label: 'OSV.dev',
+    enabled: true,
+    role: 'match',
+    proxyPrefix: '/api/osv',
+    baseUrl: 'https://api.osv.dev',
+    path: '/v1',
+  },
+  {
+    id: 'euvd',
+    label: 'ENISA EUVD',
+    enabled: true,
+    role: 'enrich',
+    proxyPrefix: '/api/euvd',
+    baseUrl: 'https://euvdservices.enisa.europa.eu',
+    path: '/api/search',
+  },
+  {
+    id: 'vulncheck-kev',
+    label: 'VulnCheck KEV',
+    enabled: true,
+    role: 'enrich',
+    proxyPrefix: '/api/vckev',
+    baseUrl: 'https://api.vulncheck.com',
+    path: '/v3/index/vulncheck-kev',
+    authEnv: 'VULNCHECK_TOKEN',
+  },
+  {
+    id: 'wordfence',
+    label: 'Wordfence Intelligence',
+    enabled: true,
+    role: 'list',
+    proxyPrefix: '/api/wordfence',
+    baseUrl: 'https://www.wordfence.com',
+    path: '/api/intelligence/v3/vulnerabilities/production',
+    authEnv: 'WORDFENCE_API_KEY',
+  },
+]
+
 export const FALLBACK_SOURCES_CONFIG: AppSourcesConfig = {
-  sources: [
-    {
-      id: 'nvd',
-      label: 'NVD (NIST)',
-      enabled: true,
-      role: 'list',
-      proxyPrefix: '/api/nvd',
-      baseUrl: 'https://services.nvd.nist.gov',
-      path: '/rest/json/cves/2.0',
-      authEnv: 'NVD_API_KEY',
-    },
-    {
-      id: 'github',
-      label: 'GitHub Advisories',
-      enabled: true,
-      role: 'list',
-      proxyPrefix: '/api/github',
-      baseUrl: 'https://api.github.com',
-      path: '/advisories',
-      authEnv: 'GITHUB_TOKEN',
-    },
-    {
-      id: 'kev',
-      label: 'CISA KEV',
-      enabled: true,
-      role: 'enrich',
-      proxyPrefix: '/api/kev',
-      baseUrl: 'https://www.cisa.gov',
-      path: '/sites/default/files/feeds/known_exploited_vulnerabilities.json',
-    },
-    {
-      id: 'epss',
-      label: 'FIRST EPSS',
-      enabled: true,
-      role: 'score',
-      proxyPrefix: '/api/epss',
-      baseUrl: 'https://api.first.org',
-      path: '/data/v1/epss',
-    },
-  ],
+  sources: [...CORE_SOURCES, ...TRUTH_SOURCES],
   technologies: [],
+  watchedPackages: [],
   defaults: { sortBy: 'risk', sortDir: 'desc' },
+}
+
+function isWatchedPackage(value: unknown): value is WatchedPackage {
+  if (!value || typeof value !== 'object') return false
+  const pkg = value as WatchedPackage
+  const versionOk = pkg.version == null || typeof pkg.version === 'string'
+  return typeof pkg.ecosystem === 'string'
+    && typeof pkg.name === 'string'
+    && versionOk
 }
 
 export function isAppSourcesConfig(value: unknown): value is AppSourcesConfig {
@@ -94,6 +165,8 @@ export function isAppSourcesConfig(value: unknown): value is AppSourcesConfig {
   if (!Array.isArray(candidate.sources) || !Array.isArray(candidate.technologies) || !candidate.defaults) {
     return false
   }
+  if (candidate.watchedPackages != null && !Array.isArray(candidate.watchedPackages)) return false
+  if (candidate.watchedPackages?.some((pkg) => !isWatchedPackage(pkg))) return false
   const sortBy = candidate.defaults.sortBy
   const sortDir = candidate.defaults.sortDir
   const sortByOk = sortBy === 'risk' || sortBy === 'severity' || sortBy === 'cvss'
