@@ -5,7 +5,7 @@ import {
 } from '@mui/material'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { useSourcesConfig } from '../hooks/useSourcesConfig'
 import { riskScore } from '../lib/aggregate'
 import { KEV_COLOR, MONO, SEVERITY_COLOR } from '../theme'
@@ -35,7 +35,7 @@ const sorters: Record<Exclude<SortKey, 'risk'>, (a: CveRecord, b: CveRecord) => 
   published: (a, b) => (a.published ?? '').localeCompare(b.published ?? ''),
 }
 
-export function CveTable({
+export const CveTable = memo(function CveTable({
   rows,
   onSelect,
   embedded = false,
@@ -50,6 +50,10 @@ export function CveTable({
   const [dir, setDir] = useState<'asc' | 'desc'>(config.defaults.sortDir)
   const [page, setPage] = useState(0)
   const [perPage, setPerPage] = useState(25)
+
+  useEffect(() => {
+    setPage(0)
+  }, [rows])
 
   const techLabel = useMemo(
     () => Object.fromEntries(config.technologies.map((tech) => [tech.id, tech.label])),
@@ -220,4 +224,4 @@ export function CveTable({
       {body}
     </Paper>
   )
-}
+})

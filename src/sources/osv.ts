@@ -4,18 +4,8 @@ import { getJson, normalizeSeverity, postJson } from '../lib/http'
 import type { PartialCve } from '../types'
 
 // OSV.dev — consulta por paquete+versión (role: match), no listado temporal.
-// Java/Maven: ecosystem "Maven", name "groupId:artifactId".
-// npm/PyPI/Go cuando el inventario lo exponga.
+// Fase 1: querybatch (rápido). Fase 2: detalles acotados (lento, opcional).
 // https://osv.dev/docs/#operation/OSV_QueryAffectedBatch
-
-interface OsvPackage {
-  ecosystem?: string
-  name?: string
-}
-
-interface OsvAffected {
-  package?: OsvPackage
-}
 
 interface OsvSeverity {
   type?: string
@@ -35,7 +25,7 @@ interface OsvVulnDetail {
   published?: string
   modified?: string
   severity?: OsvSeverity[]
-  affected?: OsvAffected[]
+  affected?: { package?: { ecosystem?: string; name?: string } }[]
   references?: { type?: string; url?: string }[]
   database_specific?: { severity?: string; cwe_ids?: string[] }
 }
@@ -52,13 +42,22 @@ export interface OsvPackageHit {
   vulnIds: string[]
 }
 
+export interface OsvHitsResult {
+  packageHits: OsvPackageHit[]
+  summaries: OsvVulnSummary[]
+}
+
 export interface OsvMatchResult {
   records: PartialCve[]
   packageHits: OsvPackageHit[]
 }
 
 const BATCH_SIZE = 40
-const DETAIL_CONCURRENCY = 8
+const DETAIL_CONCURRENCY = 6
+/** Detalles extras a traer (solo los no presentes ya en NVD/GH). */
+const MAX_DETAIL_FETCH = 80
+
+const detailCache = new Map<string, PartialCve>()
 
 function pickCvss(detail: OsvVulnDetail): { score?: number; version?: string; severity?: string } {
   const cvss = (detail.severity ?? []).find((item) => item.type?.startsWith('CVSS'))
@@ -109,15 +108,69 @@ function mapDetail(detail: OsvVulnDetail): PartialCve {
   }
 }
 
+function toQuery(pkg: WatchedPackage): Record<string, unknown> {
+  const query: Record<string, unknown> = {
+    package: { ecosystem: pkg.ecosystem, name: pkg.name },
+  }
+  if (pkg.version) query.version = pkg.version
+  return query
+}
+
+/** Fase 1: solo querybatch — barato y suficiente para etiquetar GHSA ya cargados. */
+export async function fetchOsvHits(
+  packages: WatchedPackage[],
+  signal?: AbortSignal,
+): Promise<OsvHitsResult> {
+  if (packages.length === 0) return { packageHits: [], summaries: [] }
+
+  const packageHits: OsvPackageHit[] = []
+  const summaries: OsvVulnSummary[] = []
+
+  for (let index = 0; index < packages.length; index += BATCH_SIZE) {
+    if (signal?.aborted) break
+    const batch = packages.slice(index, index + BATCH_SIZE)
+    const { data } = await postJson<QueryBatchResponse>('/api/osv/querybatch', {
+      queries: batch.map(toQuery),
+    }, signal)
+
+    for (let resultIndex = 0; resultIndex < batch.length; resultIndex += 1) {
+      const pkg = batch[resultIndex]
+      const vulns = data.results?.[resultIndex]?.vulns ?? []
+      summaries.push(...vulns)
+      packageHits.push({
+        packageKey: packageKeyOf(pkg.ecosystem, pkg.name, pkg.version),
+        ecosystem: pkg.ecosystem,
+        name: pkg.name,
+        version: pkg.version,
+        vulnIds: vulns.map((vuln) => vuln.id),
+      })
+    }
+  }
+
+  return { packageHits, summaries }
+}
+
 async function fetchDetails(ids: string[], signal?: AbortSignal): Promise<PartialCve[]> {
   const unique = [...new Set(ids)]
   const out: PartialCve[] = []
-  for (let index = 0; index < unique.length; index += DETAIL_CONCURRENCY) {
-    const slice = unique.slice(index, index + DETAIL_CONCURRENCY)
+  const missing: string[] = []
+
+  for (const id of unique) {
+    const cached = detailCache.get(id)
+    if (cached) out.push(cached)
+    else missing.push(id)
+  }
+
+  for (let index = 0; index < missing.length; index += DETAIL_CONCURRENCY) {
+    if (signal?.aborted) break
+    const slice = missing.slice(index, index + DETAIL_CONCURRENCY)
     const rows = await Promise.all(slice.map(async (id) => {
       try {
         const { data } = await getJson<OsvVulnDetail>(`/api/osv/vulns/${encodeURIComponent(id)}`, signal)
-        return mapDetail(data)
+        const mapped = mapDetail(data)
+        detailCache.set(id, mapped)
+        detailCache.set(mapped.id, mapped)
+        return mapped
       } catch {
         return null
       }
@@ -127,59 +180,61 @@ async function fetchDetails(ids: string[], signal?: AbortSignal): Promise<Partia
   return out
 }
 
-function toQuery(pkg: WatchedPackage): Record<string, unknown> {
-  const query: Record<string, unknown> = {
-    package: { ecosystem: pkg.ecosystem, name: pkg.name },
+/**
+ * Elige IDs a detallar repartiendo por paquete (round-robin).
+ * Evita quedarnos solo con vulns “recientes” y perder críticas históricas del inventario.
+ */
+function pickDetailIds(packageHits: OsvPackageHit[], knownIds: Set<string>): string[] {
+  const selected: string[] = []
+  const seen = new Set<string>()
+  let round = 0
+  while (selected.length < MAX_DETAIL_FETCH) {
+    let addedInRound = false
+    for (const hit of packageHits) {
+      const vulnId = hit.vulnIds[round]
+      if (!vulnId || knownIds.has(vulnId) || seen.has(vulnId)) continue
+      seen.add(vulnId)
+      selected.push(vulnId)
+      addedInRound = true
+      if (selected.length >= MAX_DETAIL_FETCH) break
+    }
+    if (!addedInRound) break
+    round += 1
   }
-  if (pkg.version) query.version = pkg.version
-  return query
+  return selected
 }
 
 /**
- * Cruza watchedPackages con OSV querybatch y conserva el vínculo paquete → vuln.
- * Sin inventario configurado no consulta (rol match, no listado).
+ * Fase 2: trae detalles OSV que aún no estén en el corpus (por id/alias).
+ * No bloquea el cruce inicial de la app.
  */
+export async function fetchOsvDetails(
+  packageHits: OsvPackageHit[],
+  knownIds: Set<string>,
+  signal?: AbortSignal,
+): Promise<PartialCve[]> {
+  const candidates = pickDetailIds(packageHits, knownIds)
+  if (candidates.length === 0) return []
+  return fetchDetails(candidates, signal)
+}
+
+/** Compat: hits + detalles en una sola llamada (preferir fases separadas en UI). */
 export async function fetchOsvMatch(
   packages: WatchedPackage[],
   signal?: AbortSignal,
 ): Promise<OsvMatchResult> {
-  if (packages.length === 0) return { records: [], packageHits: [] }
-
-  const packageHits: OsvPackageHit[] = []
-  const vulnIds = new Set<string>()
+  const hits = await fetchOsvHits(packages, signal)
+  const records = await fetchOsvDetails(hits.packageHits, new Set(), signal)
   const idAliasToCanonical = new Map<string, string>()
-
-  for (let index = 0; index < packages.length; index += BATCH_SIZE) {
-    const batch = packages.slice(index, index + BATCH_SIZE)
-    const { data } = await postJson<QueryBatchResponse>('/api/osv/querybatch', {
-      queries: batch.map(toQuery),
-    }, signal)
-
-    for (let resultIndex = 0; resultIndex < batch.length; resultIndex += 1) {
-      const pkg = batch[resultIndex]
-      const vulns = data.results?.[resultIndex]?.vulns ?? []
-      const ids = vulns.map((vuln) => vuln.id)
-      for (const id of ids) vulnIds.add(id)
-      packageHits.push({
-        packageKey: packageKeyOf(pkg.ecosystem, pkg.name, pkg.version),
-        ecosystem: pkg.ecosystem,
-        name: pkg.name,
-        version: pkg.version,
-        vulnIds: ids,
-      })
-    }
-  }
-
-  const records = await fetchDetails([...vulnIds], signal)
   for (const record of records) {
     idAliasToCanonical.set(record.id, record.id)
     for (const alias of record.aliases ?? []) idAliasToCanonical.set(alias, record.id)
   }
-
-  const resolvedHits = packageHits.map((hit) => ({
-    ...hit,
-    vulnIds: [...new Set(hit.vulnIds.map((id) => idAliasToCanonical.get(id) ?? id))],
-  }))
-
-  return { records, packageHits: resolvedHits }
+  return {
+    records,
+    packageHits: hits.packageHits.map((hit) => ({
+      ...hit,
+      vulnIds: [...new Set(hit.vulnIds.map((id) => idAliasToCanonical.get(id) ?? id))],
+    })),
+  }
 }

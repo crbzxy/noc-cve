@@ -1,7 +1,7 @@
 import { FormControl, InputLabel, MenuItem, OutlinedInput, Select, type SelectChangeEvent } from '@mui/material'
-import { useMemo } from 'react'
+import { useMemo, useTransition } from 'react'
 import { useAppsConfig } from '../hooks/useAppsConfig'
-import { resolveAppStack } from '../lib/resolveAppStack'
+import { resolveAppStackCached } from '../lib/resolveAppStack'
 import { useFilters } from '../store/filters'
 
 const NONE = ''
@@ -12,31 +12,48 @@ export function AppSelect({ minWidth = 260 }: { minWidth?: number }) {
   const setSelectedApp = useFilters((state) => state.setSelectedApp)
   const setTechnologies = useFilters((state) => state.setTechnologies)
   const setTechAll = useFilters((state) => state.setTechAll)
+  const [isPending, startTransition] = useTransition()
 
-  const byId = useMemo(
-    () => Object.fromEntries(options.map((option) => [option.id, option])),
+  const menuOptions = useMemo(
+    () => options.map((option) => {
+      const resolved = resolveAppStackCached(option.id, option.entry)
+      return {
+        id: option.id,
+        label: option.label,
+        entry: option.entry,
+        libCount: resolved.libraries.length,
+        techCount: resolved.techIds.length,
+        techIds: resolved.techIds,
+      }
+    }),
     [options],
   )
 
-  if (options.length === 0) return null
+  const byId = useMemo(
+    () => Object.fromEntries(menuOptions.map((option) => [option.id, option])),
+    [menuOptions],
+  )
+
+  if (menuOptions.length === 0) return null
 
   const onChange = (event: SelectChangeEvent<string>) => {
     const nextId = event.target.value
-    if (!nextId) {
-      setSelectedApp(null)
-      setTechAll(true)
-      return
-    }
-    const option = byId[nextId]
-    if (!option) return
-    const resolved = resolveAppStack(option.entry)
-    setSelectedApp(nextId)
-    if (resolved.techIds.length > 0) setTechnologies(resolved.techIds)
-    else setTechnologies([])
+    startTransition(() => {
+      if (!nextId) {
+        setSelectedApp(null)
+        setTechAll(true)
+        return
+      }
+      const option = byId[nextId]
+      if (!option) return
+      setSelectedApp(nextId)
+      if (option.techIds.length > 0) setTechnologies(option.techIds)
+      else setTechnologies([])
+    })
   }
 
   return (
-    <FormControl size="small" sx={{ minWidth }}>
+    <FormControl size="small" sx={{ minWidth, opacity: isPending ? 0.72 : 1, transition: 'opacity 120ms ease' }}>
       <InputLabel id="app-select-label">Aplicación</InputLabel>
       <Select
         labelId="app-select-label"
@@ -48,19 +65,16 @@ export function AppSelect({ minWidth = 260 }: { minWidth?: number }) {
         <MenuItem value={NONE}>
           <em>Todas las apps</em>
         </MenuItem>
-        {options.map((option) => {
-          const resolved = resolveAppStack(option.entry)
-          return (
-            <MenuItem key={option.id} value={option.id}>
-              {option.label}
-              {resolved.libraries.length > 0
-                ? ` · ${resolved.libraries.length} libs`
-                : resolved.techIds.length > 0
-                  ? ` · ${resolved.techIds.length} tech`
-                  : ''}
-            </MenuItem>
-          )
-        })}
+        {menuOptions.map((option) => (
+          <MenuItem key={option.id} value={option.id}>
+            {option.label}
+            {option.libCount > 0
+              ? ` · ${option.libCount} libs`
+              : option.techCount > 0
+                ? ` · ${option.techCount} tech`
+                : ''}
+          </MenuItem>
+        ))}
       </Select>
     </FormControl>
   )

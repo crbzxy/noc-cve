@@ -85,6 +85,11 @@ const MAVEN_GROUP_BY_ARTIFACT: Record<string, string> = {
   'spring-boot-starter-test': 'org.springframework.boot',
   'spring-boot-starter-amqp': 'org.springframework.boot',
   'spring-boot-starter-security': 'org.springframework.boot',
+  'spring-cloud-starter-openfeign': 'org.springframework.cloud',
+  'spring-cloud-starter-netflix-eureka-client': 'org.springframework.cloud',
+  'spring-cloud-starter-config': 'org.springframework.cloud',
+  'spring-cloud-starter-bootstrap': 'org.springframework.cloud',
+  'springdoc-openapi-starter-webmvc-ui': 'org.springdoc',
   'spring-core': 'org.springframework',
   'spring-web': 'org.springframework',
   'spring-context': 'org.springframework',
@@ -225,7 +230,7 @@ export function trackLibrary(raw: string): TrackedLibrary | null {
 /** Nombres cortos/ambiguos: solo se cruzan por OSV (Maven), no por texto libre. */
 const TEXT_NEEDLE_MIN = 5
 
-function needleFromLibrary(library: TrackedLibrary): string | undefined {
+export function needleFromLibrary(library: TrackedLibrary): string | undefined {
   if (library.kind === 'internal') return undefined
   if (library.needle.length < TEXT_NEEDLE_MIN) return undefined
   return library.needle
@@ -257,6 +262,17 @@ export function resolveAppStack(entry: AppInventoryEntry): ResolvedAppStack {
     watchedPackages,
     libraries,
   }
+}
+
+const appStackCache = new Map<string, { entry: AppInventoryEntry; stack: ResolvedAppStack }>()
+
+/** Cachea por id de app para no recalcular al abrir el select o cambiar filtros. */
+export function resolveAppStackCached(appId: string, entry: AppInventoryEntry): ResolvedAppStack {
+  const cached = appStackCache.get(appId)
+  if (cached && cached.entry === entry) return cached.stack
+  const stack = resolveAppStack(entry)
+  appStackCache.set(appId, { entry, stack })
+  return stack
 }
 
 export function appMatchesCveHaystack(

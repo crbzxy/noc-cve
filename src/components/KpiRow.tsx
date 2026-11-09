@@ -76,13 +76,18 @@ export function KpiRow({ rows }: { rows: CveRecord[] }) {
         overflow: 'hidden',
       }}
     >
-      <Kpi icon={<BugReportIcon fontSize="small" />} label="Total CVEs" value={rows.length} hint="CVEs tras filtros" />
+      <Kpi
+        icon={<BugReportIcon fontSize="small" />}
+        label="Total CVEs"
+        value={rows.length}
+        hint="CVEs únicos tras filtros (misma cifra que la tabla CVEs)"
+      />
       <Kpi
         icon={<ErrorIcon fontSize="small" />}
         label="Críticas"
         value={critical}
         accent={SEVERITY_COLOR.CRITICAL}
-        hint="Severidad CRITICAL"
+        hint="CVEs únicos con severidad CRITICAL (no es el número de librerías)"
       />
 
 

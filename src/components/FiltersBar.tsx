@@ -46,11 +46,25 @@ export function FiltersBar() {
   return (
     <Paper sx={{ p: 1, flexShrink: 0 }}>
       <Stack direction="row" spacing={1.5} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <ToggleButtonGroup size="small" exclusive value={f.days} onChange={(_, v) => v && f.setDays(v)} aria-label="Ventana de tiempo">
-          {WINDOWS.map((d) => (
-            <ToggleButton key={d} value={d} sx={{ px: 1.5 }}>{windowLabel(d)}</ToggleButton>
-          ))}
-        </ToggleButtonGroup>
+        <Tooltip
+          title={
+            f.selectedAppId
+              ? 'Con app: la ventana filtra el inventario, pero CRITICAL/HIGH de tus libs se mantienen siempre (versión sin parche).'
+              : 'Ventana de noticias: CVE publicados/modificados en ese periodo.'
+          }
+        >
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            value={f.days}
+            onChange={(_, v) => v && f.setDays(v)}
+            aria-label="Ventana de tiempo"
+          >
+            {WINDOWS.map((d) => (
+              <ToggleButton key={d} value={d} sx={{ px: 1.5 }}>{windowLabel(d)}</ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        </Tooltip>
 
         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
           {SEVERITIES.map((s) => {

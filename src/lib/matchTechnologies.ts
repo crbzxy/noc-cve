@@ -68,18 +68,63 @@ export function matchTechnologies(
   return hits
 }
 
+/** Cache por id+firma de contenido: evita re-escaneo regex al cambiar de app. */
+const technologyTagCache = new Map<string, { signature: string; technologies: string[] }>()
+let technologyMatchersKey = ''
+
+function recordSignature(record: MatchableCve): string {
+  return [
+    record.title ?? '',
+    String(record.description.length),
+    record.packages.join(','),
+    record.aliases.join(','),
+  ].join('|')
+}
+
+function technologiesKey(technologies: TechnologyConfig[]): string {
+  return technologies
+    .map((tech) => `${tech.id}:${tech.keywords.join(',')}`)
+    .join(';')
+}
+
 export function applyTechnologyTags(
   records: CveRecord[],
   technologies: TechnologyConfig[],
 ): CveRecord[] {
+  const nextMatchersKey = technologiesKey(technologies)
+  if (nextMatchersKey !== technologyMatchersKey) {
+    technologyTagCache.clear()
+    technologyMatchersKey = nextMatchersKey
+  }
+
   const matchers = compileTechnologyMatchers(technologies)
   if (matchers.length === 0) {
     return records.map((record) =>
       record.technologies.length === 0 ? record : { ...record, technologies: [] },
     )
   }
-  return records.map((record) => ({
-    ...record,
-    technologies: matchTechnologies(record, matchers),
-  }))
+
+  return records.map((record) => {
+    const signature = recordSignature(record)
+    const cached = technologyTagCache.get(record.id)
+    if (cached && cached.signature === signature) {
+      if (
+        record.technologies.length === cached.technologies.length
+        && record.technologies.every((techId, index) => techId === cached.technologies[index])
+      ) {
+        return record
+      }
+      return { ...record, technologies: cached.technologies }
+    }
+
+    const technologiesMatched = matchTechnologies(record, matchers)
+    technologyTagCache.set(record.id, { signature, technologies: technologiesMatched })
+    if (
+      record.technologies.length === technologiesMatched.length
+      && record.technologies.every((techId, index) => techId === technologiesMatched[index])
+    ) {
+      return record
+    }
+    return { ...record, technologies: technologiesMatched }
+  })
 }

@@ -1,7 +1,7 @@
 import type { OsvPackageHit } from '../sources/osv'
 import type { CveRecord, Severity } from '../types'
 import {
-  librariesMatchingHaystack,
+  needleFromLibrary,
   type TrackedLibrary,
 } from './resolveAppStack'
 
@@ -12,7 +12,6 @@ export interface LibraryRiskRow {
   status: LibraryRiskStatus
   cveIds: string[]
   maxSeverity: Severity | null
-  /** true si el cruce OSV fue sin versión exacta del inventario. */
   versionUnconfirmed: boolean
 }
 
@@ -39,13 +38,29 @@ function displayNameForPackage(libraries: TrackedLibrary[], packageKey: string, 
   return byArtifact?.displayName ?? artifact
 }
 
-/** Anexa matchedLibraries a cada CVE usando OSV + coincidencia textual del inventario. */
+function sameNames(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return false
+  }
+  return true
+}
+
+/**
+ * Cruce rápido: OSV hits primero; texto solo para libs no consultadas en OSV.
+ * Solo clona registros cuyo matchedLibraries cambie.
+ */
 export function applyLibraryMatches(
   records: CveRecord[],
   libraries: TrackedLibrary[],
   packageHits: OsvPackageHit[],
 ): CveRecord[] {
-  if (libraries.length === 0 && packageHits.length === 0) return records
+  if (libraries.length === 0 && packageHits.length === 0) {
+    if (records.every((record) => record.matchedLibraries.length === 0)) return records
+    return records.map((record) => (
+      record.matchedLibraries.length === 0 ? record : { ...record, matchedLibraries: [] }
+    ))
+  }
 
   const libsByCve = new Map<string, Set<string>>()
   const add = (cveId: string, name: string) => {
@@ -54,13 +69,13 @@ export function applyLibraryMatches(
     libsByCve.set(cveId, set)
   }
 
-  // OSV puede devolver GHSA; también etiquetamos por alias del registro.
   const aliasIndex = new Map<string, string>()
   for (const record of records) {
     aliasIndex.set(record.id, record.id)
     for (const alias of record.aliases) aliasIndex.set(alias, record.id)
   }
 
+  const queriedKeys = new Set(packageHits.map((hit) => hit.packageKey))
   for (const hit of packageHits) {
     const label = displayNameForPackage(libraries, hit.packageKey, hit.name)
     for (const vulnId of hit.vulnIds) {
@@ -69,38 +84,64 @@ export function applyLibraryMatches(
     }
   }
 
+  // Texto solo para libs sin consulta OSV (evita O(registros × libs) en apps Maven).
+  const textNeedles = libraries
+    .filter((library) => !library.watched || !queriedKeys.has(library.packageKey))
+    .map((library) => {
+      const needle = needleFromLibrary(library)
+      return needle ? { library, needle } : null
+    })
+    .filter((value): value is { library: TrackedLibrary; needle: string } => Boolean(value))
+
+  if (textNeedles.length > 0) {
+    for (const record of records) {
+      const quick = [
+        record.id,
+        record.title ?? '',
+        record.packages.join(' '),
+        record.aliases.join(' '),
+      ].join('\n').toLowerCase()
+
+      for (const item of textNeedles) {
+        if (quick.includes(item.needle)) add(record.id, item.library.displayName)
+      }
+    }
+  }
+
+  if (libsByCve.size === 0) {
+    if (records.every((record) => record.matchedLibraries.length === 0)) return records
+    return records.map((record) => (
+      record.matchedLibraries.length === 0 ? record : { ...record, matchedLibraries: [] }
+    ))
+  }
+
   return records.map((record) => {
-    const fromOsv = libsByCve.get(record.id)
-    const haystack = [
-      record.id,
-      record.title ?? '',
-      record.description,
-      record.packages.join(' '),
-      record.aliases.join(' '),
-    ].join('\n')
-    const fromText = librariesMatchingHaystack(haystack, libraries)
-    const matched = [...new Set([
-      ...(record.matchedLibraries ?? []),
-      ...(fromOsv ? [...fromOsv] : []),
-      ...fromText,
-    ])]
-    return matched.length === 0 ? record : { ...record, matchedLibraries: matched }
+    const matched = libsByCve.get(record.id)
+    if (!matched) {
+      return record.matchedLibraries.length === 0 ? record : { ...record, matchedLibraries: [] }
+    }
+    const next = [...matched].sort()
+    if (sameNames(record.matchedLibraries, next)) return record
+    return { ...record, matchedLibraries: next }
   })
 }
 
-/**
- * Estado por librería usando SOLO los CVE ya visibles en el dashboard
- * (misma ventana/filtros que la tabla), no el total histórico de OSV.
- */
 export function buildLibraryRiskRows(
   libraries: TrackedLibrary[],
   records: CveRecord[],
   packageHits: OsvPackageHit[] = [],
 ): LibraryRiskRow[] {
   const hitsByKey = new Map(packageHits.map((hit) => [hit.packageKey, hit]))
-  const queriedKeys = new Set(
-    packageHits.map((hit) => hit.packageKey),
-  )
+  const queriedKeys = new Set(packageHits.map((hit) => hit.packageKey))
+  const recordsByLibrary = new Map<string, CveRecord[]>()
+
+  for (const record of records) {
+    for (const name of record.matchedLibraries) {
+      const list = recordsByLibrary.get(name)
+      if (list) list.push(record)
+      else recordsByLibrary.set(name, [record])
+    }
+  }
 
   return libraries.map((library) => {
     if (library.kind === 'internal') {
@@ -113,10 +154,13 @@ export function buildLibraryRiskRows(
       }
     }
 
-    const linked = records.filter((record) => record.matchedLibraries.includes(library.displayName))
+    const linked = recordsByLibrary.get(library.displayName) ?? []
     const cveIds = linked.map((record) => record.id)
     const versionUnconfirmed = !library.version
-    const wasQueried = library.watched ? queriedKeys.has(library.packageKey) || hitsByKey.has(library.packageKey) : false
+    const osvHit = library.watched ? hitsByKey.get(library.packageKey) : undefined
+    const wasQueried = library.watched
+      ? queriedKeys.has(library.packageKey) || Boolean(osvHit)
+      : false
 
     if (cveIds.length > 0) {
       return {
@@ -124,6 +168,17 @@ export function buildLibraryRiskRows(
         status: 'vulnerable',
         cveIds,
         maxSeverity: maxSeverityOf(linked),
+        versionUnconfirmed,
+      }
+    }
+
+    // OSV reportó vulns pero aún no hay filas en el corpus filtrado: no inflar el conteo.
+    if (osvHit && osvHit.vulnIds.length > 0) {
+      return {
+        library,
+        status: 'vulnerable',
+        cveIds: [],
+        maxSeverity: null,
         versionUnconfirmed,
       }
     }
@@ -140,7 +195,7 @@ export function buildLibraryRiskRows(
 
     return {
       library,
-      status: wasQueried || Boolean(library.watched) ? 'clean' : 'unchecked',
+      status: wasQueried ? 'clean' : 'unchecked',
       cveIds: [],
       maxSeverity: null,
       versionUnconfirmed,
