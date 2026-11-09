@@ -10,14 +10,21 @@ services:
     env_file:
       - .env
     environment:
-      # Escucha en todas las interfaces dentro del contenedor
       VITE_DEV_HOST: "0.0.0.0"
     volumes:
       - .:/app
       - cve_node_modules:/app/node_modules
-    # Asegura el bundle del corpus aunque el volume no lo traiga
+    # Genera ingest.bundle.mjs y levanta Vite accesible desde fuera del contenedor
     command: >
       sh -c "npm run bundle:corpus && npm run dev -- --host 0.0.0.0 --port 5173"
+    networks:
+      - default
 
 volumes:
   cve_node_modules:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.250.250.0/24
