@@ -136,7 +136,7 @@ export function LibraryRiskPanel({
             <TableRow>
               {head('name', 'Librería', 'left', 'Orden alfabético por nombre de librería')}
               {head('severity', 'Severidad', 'left', 'Severidad máxima de los CVE asociados')}
-              {head('version', 'Versión', 'left', 'Orden por versión del inventario')}
+              {head('version', 'Versión reportada del app', 'left', 'Versión tomada del inventario JSON de la aplicación')}
               {head('cves', 'CVEs', 'right', 'Cantidad de CVE asociados a la librería')}
             </TableRow>
           </TableHead>
