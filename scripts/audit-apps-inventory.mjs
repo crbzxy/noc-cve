@@ -9,6 +9,10 @@ const { resolveAppStack, trackLibrary } = await import(
   pathToFileURL(join(root, 'src/lib/resolveAppStack.ts')).href
 )
 
+const TECH_OK = /^(Java(?: \d+)?|PHP(?: \d+(?:\.\d+)?))$/
+const FRAMEWORK_OK = /^(Spring Boot \d+\.\d+\.\d+|Spring Framework \d+\.\d+\.\d+|Magento .+|WordPress .+|Desconocido)$/
+const DATABASE_OK = /^(SQL Server(?: \d{4})?|MongoDB(?: \d+)?|Redis(?: \d+)?|MySQL|MariaDB(?: \d+)?|OpenSearch|Elasticsearch|SAP)$/
+
 const issues = []
 
 function push(label, type, extra = {}) {
@@ -22,7 +26,13 @@ for (const [label, entry] of Object.entries(apps)) {
   const dbs = entry['base de datos'] || []
   const libText = libs.join(' ').toLowerCase()
 
-  const bootFromFw = fw.match(/(\d+\.\d+(?:\.\d+)?)/)
+  if (!TECH_OK.test(tech)) push(label, 'glossary-tech', { tech })
+  if (!FRAMEWORK_OK.test(fw)) push(label, 'glossary-framework', { fw })
+  for (const database of dbs) {
+    if (!DATABASE_OK.test(database)) push(label, 'glossary-database', { database })
+  }
+
+  const bootFromFw = fw.match(/Spring Boot (\d+\.\d+\.\d+)/)
   const bootFromLibs = []
   for (const lib of libs) {
     const text = String(lib)
@@ -34,7 +44,7 @@ for (const [label, entry] of Object.entries(apps)) {
   if (bootFromFw && uniqueBoot.length > 0) {
     const frameworkMinor = bootFromFw[1].split('.').slice(0, 2).join('.')
     const libMinors = new Set(uniqueBoot.map((version) => version.split('.').slice(0, 2).join('.')))
-    if (![...libMinors].some((minor) => minor === frameworkMinor || frameworkMinor.startsWith(minor))) {
+    if (![...libMinors].some((minor) => minor === frameworkMinor)) {
       push(label, 'framework-vs-libs', { fw, libBoot: uniqueBoot.slice(0, 6) })
     }
   }
@@ -59,17 +69,7 @@ for (const [label, entry] of Object.entries(apps)) {
       sample: unversioned.slice(0, 4).map((library) => library.displayName),
     })
   }
-  if (/N\/D/i.test(tech) || fw === 'libre' || /N\/D/i.test(fw)) {
-    push(label, 'unknown-tech-or-fw', { tech, fw })
-  }
-  for (const database of dbs) {
-    if (/mongo\s*4\.6/i.test(database)) {
-      push(label, 'mongo-version-looks-like-driver', { database })
-    }
-  }
-  if (/^Spring boot 3\.0\d$/i.test(fw) || /^Spring boot 2\.3\.0\d$/i.test(fw)) {
-    push(label, 'suspicious-framework-format', { fw })
-  }
+  if (fw === 'Desconocido') push(label, 'unknown-framework', { tech, fw })
 }
 
 const byType = Object.create(null)
@@ -78,9 +78,22 @@ for (const issue of issues) {
   byType[issue.type].push(issue)
 }
 
+const sampleLabels = [
+  'TEL',
+  'truper.com',
+  'manzanillas.mx',
+  'met-WebWS',
+  'truperenlinea-bonos',
+]
+
 console.log(JSON.stringify({
   totalApps: Object.keys(apps).length,
   issueCount: issues.length,
+  glossaryViolations: {
+    tech: (byType['glossary-tech'] || []).length,
+    framework: (byType['glossary-framework'] || []).length,
+    database: (byType['glossary-database'] || []).length,
+  },
   byType: Object.fromEntries(
     Object.entries(byType).map(([type, rows]) => [
       type,
@@ -92,16 +105,17 @@ console.log(JSON.stringify({
       })),
     ]),
   ),
-  webApps: ['truper.com', 'Fix Ferreterias', 'manzanillas.mx'].map((label) => {
+  resolveSmoke: sampleLabels.map((label) => {
     const stack = resolveAppStack(apps[label])
     return {
       label,
-      technology: apps[label].tecnologia,
+      tecnologia: apps[label].tecnologia,
       framework: apps[label].framework,
+      databases: apps[label]['base de datos'],
       primaryTechIds: stack.primaryTechIds,
       scopeTechIds: stack.scopeTechIds,
+      techIds: stack.techIds,
       libs: stack.libraries.length,
-      versionedWatched: stack.watchedPackages.filter((pkg) => Boolean(pkg.version)).length,
     }
   }),
 }, null, 2))

@@ -2,10 +2,10 @@
   "apps": {
     "Renglonaje": {
       "tecnologia": "Java 8",
-      "framework": "Spring boot 2.7.1",
+      "framework": "Spring Boot 2.7.1",
       "base de datos": [
-        "Mongo 6",
-        "SQL 2019"
+        "MongoDB 6",
+        "SQL Server 2019"
       ],
       "librerias": [
         "mssql-jdbc",
@@ -14,9 +14,9 @@
     },
     "RECOM": {
       "tecnologia": "Java 8",
-      "framework": "Spring boot 2.3.04",
+      "framework": "Spring Boot 2.3.4",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "mssql-jdbc"
@@ -24,9 +24,9 @@
     },
     "TLM": {
       "tecnologia": "Java 17",
-      "framework": "Spring boot 3.04",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "mssql-jdbc"
@@ -34,9 +34,9 @@
     },
     "SRM": {
       "tecnologia": "Java 8",
-      "framework": "Spring boot 2.5.3",
+      "framework": "Spring Boot 2.5.3",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "mssql-jdbc"
@@ -44,9 +44,9 @@
     },
     "Extractos Bancarios (batch-tel)": {
       "tecnologia": "Java 8",
-      "framework": "Spring boot 2.2.6.RELEASE",
+      "framework": "Spring Boot 2.2.6",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "mssql-jdbc"
@@ -54,9 +54,9 @@
     },
     "Centros de Servicio": {
       "tecnologia": "Java 17",
-      "framework": "Spring boot 3.3.1",
+      "framework": "Spring Boot 3.3.1",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "ajax-wrapper-comp_1.0rc1",
@@ -114,9 +114,9 @@
     },
     "Recordatorios": {
       "tecnologia": "Java 21",
-      "framework": "Spring boot 3.5.1",
+      "framework": "Spring Boot 3.5.1",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "spring-boot-starter-web 3.5.1",
@@ -149,10 +149,10 @@
     },
     "TEL": {
       "tecnologia": "Java 8",
-      "framework": "Spring 5.3.28",
+      "framework": "Spring Framework 5.3.28",
       "base de datos": [
-        "Mongo 4.6.1",
-        "SQL 2019"
+        "MongoDB",
+        "SQL Server 2019"
       ],
       "librerias": [
         "ajax-wrapper-comp_1.0",
@@ -265,10 +265,10 @@
       ]
     },
     "truperenlinea-bonos": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -293,10 +293,10 @@
       ]
     },
     "truperenlinea-cartera": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -322,11 +322,11 @@
       ]
     },
     "truperenlinea-clientes": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "Mongo 6",
-        "SQL 2019"
+        "MongoDB 6",
+        "SQL Server 2019"
       ],
       "librerias": [
         "com.fasterxml.jackson.core:jackson-databind:2.14.2",
@@ -358,10 +358,10 @@
       ]
     },
     "truperenlinea-pagos": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "org.springframework.boot:spring-boot-starter-actuator:jar:3.0.4:compile",
@@ -384,10 +384,10 @@
       ]
     },
     "truperenlinea-pedidos": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -417,10 +417,10 @@
       ]
     },
     "truperenlinea-planeacion": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -445,10 +445,10 @@
       ]
     },
     "truperenlinea-planner-tienda": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "org.springframework.boot:spring-boot-starter-actuator:jar:3.5.7:compile",
@@ -478,11 +478,11 @@
       ]
     },
     "truperenlinea-productos": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019",
-        "Mongo 6",
+        "SQL Server 2019",
+        "MongoDB 6",
         "Redis 7"
       ],
       "librerias": [
@@ -511,11 +511,11 @@
       ]
     },
     "truperenlinea-support": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "Mongo 6",
-        "SQL 2019"
+        "MongoDB 6",
+        "SQL Server 2019"
       ],
       "librerias": [
         "org.springframework.boot:spring-boot-starter-actuator:jar:3.0.4:compile",
@@ -547,10 +547,10 @@
       ]
     },
     "truperenlinea-truput": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "org.springframework.boot:spring-boot-starter-data-jpa:jar:3.0.4:compile",
@@ -582,11 +582,11 @@
       ]
     },
     "truperenlinea-folios": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019",
-        "Mongo 6"
+        "SQL Server 2019",
+        "MongoDB 6"
       ],
       "librerias": [
         "org.springframework.boot:spring-boot-starter-actuator:3.1.0",
@@ -623,10 +623,10 @@
       ]
     },
     "truperenlinea-pedidos-consumer": {
-      "tecnologia": "java 21",
-      "framework": "libre",
+      "tecnologia": "Java 21",
+      "framework": "Spring Boot 3.4.5",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "SAP"
       ],
       "librerias": [
@@ -663,10 +663,10 @@
       ]
     },
     "truperenlinea-pedidos-consumer-tel": {
-      "tecnologia": "java 21",
-      "framework": "spring-boot-starter-parent 3.4.5",
+      "tecnologia": "Java 21",
+      "framework": "Spring Boot 3.4.5",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "SAP"
       ],
       "librerias": [
@@ -691,10 +691,10 @@
       ]
     },
     "truperenlinea-pedidos-producer": {
-      "tecnologia": "java 21",
-      "framework": "spring-boot-starter-parent 3.4.5",
+      "tecnologia": "Java 21",
+      "framework": "Spring Boot 3.4.5",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "com.truper.sso:ws-sso-commons:2.0.3",
@@ -720,11 +720,11 @@
       ]
     },
     "truperenlinea-search": {
-      "tecnologia": "java 21",
-      "framework": "spring-boot-starter-parent 3.4.13",
+      "tecnologia": "Java 21",
+      "framework": "Spring Boot 3.4.13",
       "base de datos": [
-        "SQL 2019",
-        "Mongo 6"
+        "SQL Server 2019",
+        "MongoDB 6"
       ],
       "librerias": [
         "com.github.vladimir-bukhtoyarov:bucket4j-core:8.0.1",
@@ -762,10 +762,10 @@
       ]
     },
     "truperenlinea-mayoristas": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "org.springframework.boot:spring-boot-starter-web:jar:3.0.4:compile",
@@ -783,10 +783,10 @@
       ]
     },
     "truperenlinea-mostradores": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "org.springframework.boot:spring-boot-starter-actuator:jar:3.0.4:compile",
@@ -824,10 +824,10 @@
       ]
     },
     "truperenlinea-security": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -857,10 +857,10 @@
       ]
     },
     "truperenlinea-redis-usuarios": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.2",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.2",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -914,11 +914,11 @@
       ]
     },
     "truperenlinea-reglas-comerciales": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019",
-        "Mongo 6"
+        "SQL Server 2019",
+        "MongoDB 6"
       ],
       "librerias": [
         "org.springframework.boot:spring-boot-starter-actuator:jar:3.0.4:compile",
@@ -948,10 +948,10 @@
       ]
     },
     "truperenlinea-redis-batch": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.2",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.2",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -998,10 +998,10 @@
       ]
     },
     "truperenlinea-redis-batch-planning": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.2",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.2",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -1055,10 +1055,10 @@
       ]
     },
     "truperenlinea-redis-batch-reng": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.2",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.2",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -1079,10 +1079,10 @@
       ]
     },
     "truperenlinea-redis-batch-reports": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.2",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.2",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -1131,10 +1131,10 @@
       ]
     },
     "truperenlinea-redis-maps": {
-      "tecnologia": "java 1.8",
-      "framework": "spring-boot-starter-parent 2.5.3",
+      "tecnologia": "Java 8",
+      "framework": "Spring Boot 2.5.3",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -1162,10 +1162,10 @@
       ]
     },
     "truperenlinea-redis-productos-maps": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.2",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.2",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -1202,8 +1202,8 @@
       ]
     },
     "truperenlinea-redis-existencias": {
-      "tecnologia": "java 1.8",
-      "framework": "spring-boot-starter-parent 2.5.3",
+      "tecnologia": "Java 8",
+      "framework": "Spring Boot 2.5.3",
       "base de datos": [],
       "librerias": [
         "org.springframework.boot:spring-boot-starter-web:2.5.3",
@@ -1213,10 +1213,10 @@
       ]
     },
     "truperenlinea-reglas-comerciales-batch": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019",
+        "SQL Server 2019",
         "Redis 7"
       ],
       "librerias": [
@@ -1247,10 +1247,10 @@
       ]
     },
     "truperenlinea-commons-redis": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.5",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.5",
       "base de datos": [
-        "Mongo 6"
+        "MongoDB 6"
       ],
       "librerias": [
         "org.springframework.boot:spring-boot-starter:jar:3.0.5:compile",
@@ -1264,8 +1264,8 @@
       ]
     },
     "truperenlinea-commons-sap": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [],
       "librerias": [
         "org.springframework.boot:spring-boot-starter:3.0.4",
@@ -1281,10 +1281,10 @@
       ]
     },
     "truperenlinea-commons-support": {
-      "tecnologia": "java 17",
-      "framework": "spring-boot-starter-parent 3.0.4",
+      "tecnologia": "Java 17",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
-        "SQL 2019"
+        "SQL Server 2019"
       ],
       "librerias": [
         "org.springframework.boot:spring-boot-starter:jar:3.0.4:compile",
@@ -1303,8 +1303,8 @@
       ]
     },
     "met-WebWS": {
-      "tecnologia": "Java (N/D)",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
@@ -1366,8 +1366,8 @@
       ]
     },
     "met-WebPedidosWS": {
-      "tecnologia": "Java (N/D)",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
@@ -1426,8 +1426,8 @@
       ]
     },
     "met-WebPagosWS": {
-      "tecnologia": "Java (N/D)",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
@@ -1486,8 +1486,8 @@
       ]
     },
     "met-WebFoliosWS": {
-      "tecnologia": "Java (N/D)",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
@@ -1547,8 +1547,8 @@
       ]
     },
     "met-WebEntregasWS": {
-      "tecnologia": "Java (N/D)",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
@@ -1609,8 +1609,8 @@
       ]
     },
     "met-WebConsumidorColasPedidos": {
-      "tecnologia": "Java (N/D)",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
@@ -1665,8 +1665,8 @@
       ]
     },
     "met-WebClientesWS": {
-      "tecnologia": "Java (N/D)",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
@@ -1726,8 +1726,8 @@
       ]
     },
     "met-WebCarteraWS": {
-      "tecnologia": "Java (N/D)",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
@@ -1786,8 +1786,8 @@
       ]
     },
     "met-WebAuthWS": {
-      "tecnologia": "Java (N/D)",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
@@ -1842,8 +1842,8 @@
       ]
     },
     "met-WebAsesoresWS": {
-      "tecnologia": "Java (N/D)",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
@@ -1901,8 +1901,8 @@
       ]
     },
     "met-webBatch": {
-      "tecnologia": "Java (N/D)",
-      "framework": "Spring boot 2.5.7",
+      "tecnologia": "Java",
+      "framework": "Spring Boot 2.5.7",
       "base de datos": [
         "SQL Server"
       ],
@@ -1960,8 +1960,8 @@
       ]
     },
     "met-web (TEL)": {
-      "tecnologia": "Java (N/D)",
-      "framework": "N/D",
+      "tecnologia": "Java",
+      "framework": "Desconocido",
       "base de datos": [
         "SQL Server"
       ],
@@ -2010,8 +2010,8 @@
       ]
     },
     "DAC": {
-      "tecnologia": "Java 1.8",
-      "framework": "Spring boot 2.1.1.RELEASE",
+      "tecnologia": "Java 8",
+      "framework": "Spring Boot 2.1.1",
       "base de datos": [
         "SQL Server"
       ],
@@ -2068,7 +2068,7 @@
     },
     "Reglas Comerciales Batch": {
       "tecnologia": "Java 17",
-      "framework": "Spring boot 3.0.4",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
         "SQL Server",
         "MongoDB"
@@ -2105,7 +2105,7 @@
     },
     "Reglas Comerciales": {
       "tecnologia": "Java 17",
-      "framework": "Spring boot 3.0.4",
+      "framework": "Spring Boot 3.0.4",
       "base de datos": [
         "SQL Server",
         "MongoDB",
@@ -2143,8 +2143,8 @@
       ]
     },
     "Publisher": {
-      "tecnologia": "Java 1.8",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java 8",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
@@ -2180,8 +2180,8 @@
       ]
     },
     "Consumer": {
-      "tecnologia": "Java 1.8",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java 8",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
@@ -2217,7 +2217,7 @@
     },
     "Worker": {
       "tecnologia": "Java 17",
-      "framework": "Spring boot 3.3.1",
+      "framework": "Spring Boot 3.3.1",
       "base de datos": [
         "SQL Server"
       ],
@@ -2249,8 +2249,8 @@
       ]
     },
     "WebScraping": {
-      "tecnologia": "Java 1.8",
-      "framework": "Spring boot 2.5.6",
+      "tecnologia": "Java 8",
+      "framework": "Spring Boot 2.5.6",
       "base de datos": [
         "SQL Server"
       ],
