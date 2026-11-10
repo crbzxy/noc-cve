@@ -113,7 +113,13 @@
         "jenkins"
       ],
       "group": "TEL",
-      "subgroup": "Java / Spring"
+      "subgroup": "Java / Spring",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "spring",
@@ -135,7 +141,13 @@
         "mqtt"
       ],
       "group": "TEL",
-      "subgroup": "Java / Spring"
+      "subgroup": "Java / Spring",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "cicd",
@@ -156,7 +168,13 @@
       ],
       "hub": true,
       "group": "TEL",
-      "subgroup": "Git / CI"
+      "subgroup": "Git / CI",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "github-actions",
@@ -172,7 +190,13 @@
         "nodejs"
       ],
       "group": "TEL",
-      "subgroup": "Git / CI"
+      "subgroup": "Git / CI",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "gitlab",
@@ -189,7 +213,13 @@
         "kubernetes"
       ],
       "group": "TEL",
-      "subgroup": "Git / CI"
+      "subgroup": "Git / CI",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "jenkins",
@@ -206,7 +236,13 @@
         "kubernetes"
       ],
       "group": "TEL",
-      "subgroup": "Git / CI"
+      "subgroup": "Git / CI",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "nexus",
@@ -225,7 +261,13 @@
         "docker"
       ],
       "group": "TEL",
-      "subgroup": "Git / CI"
+      "subgroup": "Git / CI",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "react",
@@ -246,7 +288,13 @@
         "react-native"
       ],
       "group": "TEL",
-      "subgroup": "React"
+      "subgroup": "React",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "nginx",
@@ -264,7 +312,13 @@
         "cloudflare"
       ],
       "group": "TEL",
-      "subgroup": "Nginx"
+      "subgroup": "Nginx",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "tomcat",
@@ -283,7 +337,13 @@
         "http"
       ],
       "group": "TEL",
-      "subgroup": "Tomcat"
+      "subgroup": "Tomcat",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "http",
@@ -303,7 +363,13 @@
         "openssl"
       ],
       "group": "TEL",
-      "subgroup": "Apache HTTP"
+      "subgroup": "Apache HTTP",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "wso2",
@@ -323,7 +389,12 @@
         "keycloak"
       ],
       "group": "TEL",
-      "subgroup": "WSO2"
+      "subgroup": "WSO2",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "codeigniter",
@@ -339,7 +410,13 @@
         "mysql",
         "lamp"
       ],
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "django",
@@ -355,7 +432,13 @@
         "postgres",
         "mysql"
       ],
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "express",
@@ -369,7 +452,13 @@
       "related": [
         "nodejs"
       ],
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "fastapi",
@@ -382,7 +471,13 @@
       "related": [
         "python"
       ],
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "flask",
@@ -394,7 +489,13 @@
       "related": [
         "python"
       ],
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "laravel",
@@ -410,7 +511,13 @@
         "mysql",
         "redis"
       ],
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "magento",
@@ -437,7 +544,13 @@
         "cloudflare"
       ],
       "hub": true,
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "nestjs",
@@ -451,7 +564,13 @@
         "nodejs",
         "express"
       ],
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "nodejs",
@@ -472,7 +591,13 @@
         "mongodb",
         "express"
       ],
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "php",
@@ -493,7 +618,13 @@
         "laravel",
         "symfony"
       ],
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "python",
@@ -517,7 +648,13 @@
         "flask",
         "fastapi"
       ],
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "symfony",
@@ -531,7 +668,13 @@
         "php",
         "mysql"
       ],
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "wordpress",
@@ -552,7 +695,14 @@
         "nginx",
         "cloudflare"
       ],
-      "subgroup": "Lenguajes y plataformas backend"
+      "subgroup": "Lenguajes y plataformas backend",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv",
+        "wordfence"
+      ]
     },
     {
       "id": "htmlcss",
@@ -570,7 +720,13 @@
         "react",
         "jamstack"
       ],
-      "subgroup": "Frontend web"
+      "subgroup": "Frontend web",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "jamstack",
@@ -595,7 +751,13 @@
         "cloudflare"
       ],
       "hub": true,
-      "subgroup": "Frontend web"
+      "subgroup": "Frontend web",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "react-native",
@@ -612,7 +774,13 @@
         "react",
         "nodejs"
       ],
-      "subgroup": "Móvil"
+      "subgroup": "Móvil",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "community",
@@ -631,7 +799,13 @@
         "mysql",
         "java"
       ],
-      "subgroup": "Bases de datos"
+      "subgroup": "Bases de datos",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "elasticsearch",
@@ -650,7 +824,13 @@
         "docker",
         "kubernetes"
       ],
-      "subgroup": "Bases de datos"
+      "subgroup": "Bases de datos",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "mongodb",
@@ -666,7 +846,13 @@
         "docker",
         "linux"
       ],
-      "subgroup": "Bases de datos"
+      "subgroup": "Bases de datos",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "sqlserver",
@@ -685,7 +871,12 @@
         "spring",
         "windows"
       ],
-      "subgroup": "Bases de datos"
+      "subgroup": "Bases de datos",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "mysql",
@@ -703,7 +894,13 @@
         "php",
         "linux"
       ],
-      "subgroup": "Bases de datos"
+      "subgroup": "Bases de datos",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "postgres",
@@ -717,7 +914,13 @@
         "docker",
         "python"
       ],
-      "subgroup": "Bases de datos"
+      "subgroup": "Bases de datos",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "redis",
@@ -732,7 +935,13 @@
         "docker",
         "magento"
       ],
-      "subgroup": "Bases de datos"
+      "subgroup": "Bases de datos",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "kafka",
@@ -750,7 +959,13 @@
         "spring",
         "kubernetes"
       ],
-      "subgroup": "Integración y mensajería"
+      "subgroup": "Integración y mensajería",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "keycloak",
@@ -769,7 +984,13 @@
         "spring",
         "windows"
       ],
-      "subgroup": "Integración y mensajería"
+      "subgroup": "Integración y mensajería",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "mqtt",
@@ -788,7 +1009,13 @@
         "nodejs",
         "docker"
       ],
-      "subgroup": "Integración y mensajería"
+      "subgroup": "Integración y mensajería",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "rabbitmq",
@@ -805,7 +1032,13 @@
         "docker",
         "magento"
       ],
-      "subgroup": "Integración y mensajería"
+      "subgroup": "Integración y mensajería",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "sap",
@@ -814,41 +1047,115 @@
         "sap",
         "sap se",
         "sap ag",
-        "sap netweaver",
-        "netweaver",
-        "sap hana",
-        "hana",
+        "sap erp",
+        "sap ecc",
+        "sap r/3",
+        "sap business suite",
         "s/4hana",
         "s4hana",
         "sap s/4",
-        "sap erp",
+        "sap s/4hana",
+        "sap cloud erp",
+        "rise with sap",
+        "grow with sap",
+        "sap netweaver",
+        "netweaver",
         "sap basis",
-        "sap abap",
-        "abap",
+        "sap_basis",
+        "sap application server",
+        "netweaver as abap",
+        "netweaver as java",
+        "sap j2ee",
         "sap kernel",
+        "sapwebdisp",
+        "sap web dispatcher",
+        "web dispatcher",
+        "sap dispatcher",
+        "sap router",
+        "sap gateway",
+        "internet communication manager",
+        "sap icm",
+        "sap hana",
+        "hana database",
+        "sap hana xs",
+        "hana extended application services",
+        "sap hana xsa",
+        "sap abap",
+        "abap platform",
         "sap gui",
+        "sapgui",
         "sap fiori",
         "fiori",
-        "sap gateway",
+        "sapui5",
+        "sap ui5",
+        "business server pages",
         "sap business one",
         "sap b1",
         "sap commerce",
+        "sap commerce cloud",
+        "commerce cloud",
         "hybris",
         "sap crm",
+        "sap c4c",
+        "sap customer experience",
+        "sap sales cloud",
+        "sap service cloud",
+        "sap marketing cloud",
         "sap bw",
         "sap bi",
+        "sap business warehouse",
+        "businessobjects",
+        "business objects",
+        "sap businessobjects",
+        "sap analytics cloud",
         "sap solution manager",
-        "sap j2ee",
-        "sapwebdisp",
-        "sap dispatcher",
-        "sap router",
-        "icm",
-        "sap maxdb",
-        "sybase",
-        "sap ase",
+        "sap solman",
         "sap cpi",
+        "sap pi",
+        "sap po",
+        "sap xi",
+        "process orchestration",
+        "process integration",
+        "sap cloud integration",
+        "sap integration suite",
         "sap btp",
-        "sap cloud integration"
+        "business technology platform",
+        "sap build",
+        "sap cloud platform",
+        "sap maxdb",
+        "maxdb",
+        "sap ase",
+        "adaptive server enterprise",
+        "sybase",
+        "sap iq",
+        "sap anytime",
+        "sap jco",
+        "sapjco",
+        "sap java connector",
+        "sap rfc",
+        "sap idoc",
+        "sap enterprise portal",
+        "sap portal",
+        "sap content server",
+        "internet graphics server",
+        "sap igs",
+        "sap livecache",
+        "sap scm",
+        "sap ewm",
+        "sap tm",
+        "sap ibp",
+        "sap apo",
+        "sap hcm",
+        "successfactors",
+        "sap successfactors",
+        "sap ariba",
+        "sap concur",
+        "sap fieldglass",
+        "sap financial consolidation",
+        "sap disclosure management",
+        "sap incentive and commission",
+        "3d visual enterprise",
+        "sap visual enterprise"
       ],
       "related": [
         "java",
@@ -863,7 +1170,12 @@
         "network-security"
       ],
       "hub": true,
-      "subgroup": "ERP y plataformas"
+      "subgroup": "ERP y plataformas",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "akamai",
@@ -876,7 +1188,12 @@
       "related": [
         "cdn-edge"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "ansible",
@@ -892,7 +1209,13 @@
         "linux",
         "terraform"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "aws",
@@ -912,7 +1235,12 @@
         "kubernetes",
         "terraform"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "cdn-edge",
@@ -931,7 +1259,12 @@
         "nginx"
       ],
       "hub": true,
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "checkpoint",
@@ -948,7 +1281,13 @@
         "network-security",
         "vpn"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "kev",
+        "vulncheck-kev"
+      ]
     },
     {
       "id": "cisco",
@@ -973,7 +1312,13 @@
         "network-security",
         "vpn"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "kev",
+        "vulncheck-kev"
+      ]
     },
     {
       "id": "citrix",
@@ -992,7 +1337,13 @@
         "vpn",
         "windows"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "kev",
+        "vulncheck-kev"
+      ]
     },
     {
       "id": "cloud",
@@ -1011,7 +1362,12 @@
         "terraform"
       ],
       "hub": true,
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "cloudflare",
@@ -1035,7 +1391,12 @@
         "nginx",
         "nodejs"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "docker",
@@ -1054,7 +1415,13 @@
         "redis",
         "kubernetes"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "f5",
@@ -1072,7 +1439,13 @@
         "network-security",
         "nginx"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "kev",
+        "vulncheck-kev"
+      ]
     },
     {
       "id": "network-security",
@@ -1103,7 +1476,13 @@
         "vpn"
       ],
       "hub": true,
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "kev",
+        "vulncheck-kev"
+      ]
     },
     {
       "id": "fortinet",
@@ -1132,7 +1511,13 @@
         "network-security",
         "vpn"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "kev",
+        "vulncheck-kev"
+      ]
     },
     {
       "id": "gcp",
@@ -1149,7 +1534,12 @@
         "cloud",
         "kubernetes"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "ivanti",
@@ -1168,7 +1558,13 @@
         "network-security",
         "vpn"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "kev",
+        "vulncheck-kev"
+      ]
     },
     {
       "id": "kubernetes",
@@ -1201,7 +1597,13 @@
         "prometheus"
       ],
       "hub": true,
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "linux",
@@ -1229,7 +1631,12 @@
         "openssl"
       ],
       "hub": true,
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "linux-kernel",
@@ -1248,7 +1655,12 @@
       "related": [
         "linux"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "azure",
@@ -1266,7 +1678,12 @@
         "windows",
         "kubernetes"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "openssl",
@@ -1286,7 +1703,13 @@
         "nginx",
         "http"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "paloalto",
@@ -1306,7 +1729,13 @@
         "network-security",
         "vpn"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "kev",
+        "vulncheck-kev"
+      ]
     },
     {
       "id": "prometheus",
@@ -1326,7 +1755,13 @@
         "linux",
         "elasticsearch"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "rancher",
@@ -1348,7 +1783,13 @@
         "linux",
         "helm"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "sonicwall",
@@ -1364,7 +1805,13 @@
         "network-security",
         "vpn"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "kev",
+        "vulncheck-kev"
+      ]
     },
     {
       "id": "sophos",
@@ -1380,7 +1827,13 @@
       "related": [
         "network-security"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "kev",
+        "vulncheck-kev"
+      ]
     },
     {
       "id": "terraform",
@@ -1399,7 +1852,13 @@
         "kubernetes",
         "ansible"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "vmware",
@@ -1420,7 +1879,13 @@
         "windows",
         "kubernetes"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "kev",
+        "vulncheck-kev"
+      ]
     },
     {
       "id": "vpn",
@@ -1438,7 +1903,13 @@
         "network-security",
         "linux"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "kev",
+        "vulncheck-kev"
+      ]
     },
     {
       "id": "windows",
@@ -1461,7 +1932,12 @@
         "vmware",
         "network-security"
       ],
-      "subgroup": "Cloud e infraestructura"
+      "subgroup": "Cloud e infraestructura",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github"
+      ]
     },
     {
       "id": "argocd",
@@ -1479,7 +1955,13 @@
         "helm",
         "cicd"
       ],
-      "subgroup": "CI/CD y herramientas"
+      "subgroup": "CI/CD y herramientas",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "helm",
@@ -1495,7 +1977,13 @@
         "rancher",
         "argocd"
       ],
-      "subgroup": "CI/CD y herramientas"
+      "subgroup": "CI/CD y herramientas",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "n8n",
@@ -1508,7 +1996,13 @@
         "cicd",
         "docker"
       ],
-      "subgroup": "CI/CD y herramientas"
+      "subgroup": "CI/CD y herramientas",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "haproxy",
@@ -1521,7 +2015,13 @@
         "kubernetes",
         "network-security"
       ],
-      "subgroup": "Servidores web y middleware"
+      "subgroup": "Servidores web y middleware",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "lamp",
@@ -1539,7 +2039,13 @@
         "php"
       ],
       "hub": true,
-      "subgroup": "Servidores web y middleware"
+      "subgroup": "Servidores web y middleware",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "traefik",
@@ -1551,7 +2057,13 @@
         "kubernetes",
         "docker"
       ],
-      "subgroup": "Servidores web y middleware"
+      "subgroup": "Servidores web y middleware",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     },
     {
       "id": "varnish",
@@ -1566,7 +2078,13 @@
         "nginx",
         "cdn-edge"
       ],
-      "subgroup": "Servidores web y middleware"
+      "subgroup": "Servidores web y middleware",
+      "truthSources": [
+        "nvd",
+        "cveorg",
+        "github",
+        "osv"
+      ]
     }
   ],
   "defaults": {

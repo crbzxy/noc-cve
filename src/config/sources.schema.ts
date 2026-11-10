@@ -13,10 +13,27 @@ export interface SourceConfig {
 
 export type TechnologyCategory = 'language' | 'framework'
 
+/** IDs de fuentes en `sources` que respaldan vulnerabilidades de esta tecnología. */
+export type TruthSourceId =
+  | 'nvd'
+  | 'cveorg'
+  | 'github'
+  | 'osv'
+  | 'wordfence'
+  | 'euvd'
+  | 'kev'
+  | 'vulncheck-kev'
+  | 'epss'
+
 export interface TechnologyConfig {
   id: string
   label: string
   keywords: string[]
+  /**
+   * Fuentes de verdad de vulnerabilidades para esta tecnología (metadato ops/UI).
+   * No cambia el matching por keywords; documenta qué upstreams la cubren.
+   */
+  truthSources?: TruthSourceId[]
   /**
    * Metadato de catálogo (ops / docs). No alimenta matching ni UI actual.
    * reserved for future relation views.
@@ -178,9 +195,15 @@ export function isAppSourcesConfig(value: unknown): value is AppSourcesConfig {
       && typeof source.proxyPrefix === 'string'
       && typeof source.baseUrl === 'string'
       && source.baseUrl.startsWith('https://')))
-    && candidate.technologies.every((tech) =>
-      Boolean(tech && typeof tech.id === 'string' && typeof tech.label === 'string'
-        && Array.isArray(tech.keywords)))
+    && candidate.technologies.every((tech) => {
+      if (!tech || typeof tech.id !== 'string' || typeof tech.label !== 'string'
+        || !Array.isArray(tech.keywords)) {
+        return false
+      }
+      if (tech.truthSources == null) return true
+      return Array.isArray(tech.truthSources)
+        && tech.truthSources.every((sourceId) => typeof sourceId === 'string')
+    })
 }
 
 export function findSource(config: AppSourcesConfig, id: string): SourceConfig | undefined {

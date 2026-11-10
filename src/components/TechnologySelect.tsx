@@ -3,9 +3,28 @@ import {
   OutlinedInput, Select, type SelectChangeEvent,
 } from '@mui/material'
 import { useMemo, type ReactNode } from 'react'
-import type { TechnologyConfig } from '../config/sources.schema'
+import type { TechnologyConfig, TruthSourceId } from '../config/sources.schema'
 import { useSourcesConfig } from '../hooks/useSourcesConfig'
 import { useFilters } from '../store/filters'
+
+const TRUTH_SOURCE_LABEL: Record<TruthSourceId, string> = {
+  nvd: 'NVD',
+  cveorg: 'CVE.org',
+  github: 'GitHub',
+  osv: 'OSV',
+  wordfence: 'Wordfence',
+  euvd: 'EUVD',
+  kev: 'CISA KEV',
+  'vulncheck-kev': 'VulnCheck KEV',
+  epss: 'EPSS',
+}
+
+function formatTruthSources(tech: TechnologyConfig): string | undefined {
+  if (!tech.truthSources?.length) return undefined
+  return tech.truthSources
+    .map((sourceId) => TRUTH_SOURCE_LABEL[sourceId] ?? sourceId)
+    .join(' · ')
+}
 
 const ALL_TECH = '__all__'
 const STACK_PREFIX = '__stack__:'
@@ -223,26 +242,35 @@ export function TechnologySelect({ minWidth = 280 }: { minWidth?: number }) {
           </ListSubheader>,
         )
         for (const tech of subgroup.techs) {
-          items.push(
-            <MenuItem key={tech.id} value={tech.id} dense sx={{ pl: 5 }}>
-              <Checkbox size="small" checked={!allSelected && selectedTech.includes(tech.id)} />
-              <ListItemText primary={tech.label} />
-            </MenuItem>,
-          )
+          items.push(renderTechMenuItem(tech, 5))
         }
       }
       return items
     }
 
     for (const tech of stack.techs) {
-      items.push(
-        <MenuItem key={tech.id} value={tech.id} dense sx={{ pl: 4 }}>
-          <Checkbox size="small" checked={!allSelected && selectedTech.includes(tech.id)} />
-          <ListItemText primary={tech.label} />
-        </MenuItem>,
-      )
+      items.push(renderTechMenuItem(tech, 4))
     }
     return items
+  }
+
+  function renderTechMenuItem(tech: TechnologyConfig, paddingLeft: number): ReactNode {
+    const truthLabel = formatTruthSources(tech)
+    return (
+      <MenuItem
+        key={tech.id}
+        value={tech.id}
+        dense
+        sx={{ pl: paddingLeft }}
+        title={truthLabel ? `Fuentes de verdad: ${truthLabel}` : undefined}
+      >
+        <Checkbox size="small" checked={!allSelected && selectedTech.includes(tech.id)} />
+        <ListItemText
+          primary={tech.label}
+          secondary={truthLabel ? `Verdad: ${truthLabel}` : undefined}
+        />
+      </MenuItem>
+    )
   }
 
   return (

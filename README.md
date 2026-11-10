@@ -68,7 +68,7 @@ Un solo JSON controla:
 | Sección | Qué define |
 |---|---|
 | `sources` | Fuentes de datos: `id`, `label`, `enabled`, `role`, **`baseUrl`**, `path`, `proxyPrefix`, `authEnv` |
-| `technologies` | Lenguajes/tecnologías a vigilar (Magento, Java, Docker, Nginx, Redis, DBs, HTTP…) y sus keywords |
+| `technologies` | Lenguajes/tecnologías a vigilar + `keywords` + **`truthSources`** (fuentes de verdad de vulns) |
 | `watchedPackages` | Inventario opcional para OSV (`ecosystem` + `name` + `version`) |
 | `defaults` | Orden por riesgo (`sortBy` / `sortDir`) |
 
@@ -106,22 +106,50 @@ npm run sync:sources   # copia a public/config/sources.json
 Agrega un objeto en `technologies`:
 
 ```json
-{ "id": "nodejs", "label": "Node.js", "keywords": ["node.js", "nodejs", "npm"] }
+{
+  "id": "nodejs",
+  "label": "Node.js",
+  "keywords": ["node.js", "nodejs", "npm"],
+  "truthSources": ["nvd", "cveorg", "github", "osv"]
+}
 ```
 
-Para acotar la tabla a un stack, usa el selector de tecnologías (TEL, por tech o Todas).
+Para acotar la tabla a un stack, usa el selector de tecnologías (TEL, por tech o Todas). El menú muestra las **fuentes de verdad** de cada tech (`truthSources`).
 
-| Fuente | Rol | Qué aporta | Credencial |
-|---|---|---|---|
-| **CVE.org** Search API | list | Fuente canónica del programa CVE (respaldo si NVD se atrasa) | — |
-| **NVD (NIST)** API 2.0 | list | CVSS enriquecido, CWE, estado de análisis | `NVD_API_KEY` (opcional) |
-| **GitHub Advisories** | list | Paquetes por ecosistema y GHSA sin CVE | `GITHUB_TOKEN` (opcional) |
-| **OSV.dev** | match | Cruce por *paquete + versión* (npm, Packagist, Maven…) | — |
-| **ENISA EUVD** | enrich | Respaldo UE ante inestabilidad NVD/CVE | — |
-| **Wordfence Intelligence** | list | Plugins/temas WordPress poco cubiertos en NVD | `WORDFENCE_API_KEY` |
-| **CISA KEV** | enrich | Explotadas activamente (catálogo federal) | — |
-| **VulnCheck KEV** | enrich | KEV ampliado (mayor cobertura que CISA) | `VULNCHECK_TOKEN` |
-| **FIRST EPSS** | score | Probabilidad de explotación a 30 días | — |
+### Fuente de verdad por tecnología
+
+Las tecnologías **no tienen API propia**: se etiquetan por keywords sobre el corpus. Cada entrada declara en `truthSources` qué upstreams la respaldan.
+
+| Grupo | Tecnologías (ejemplos) | `truthSources` |
+|---|---|---|
+| Lenguajes / frameworks / OSS | Java, Spring, Node, PHP, Python, React, Laravel, Django, Docker, K8s, DBs, CI… | `nvd`, `cveorg`, `github`, `osv` |
+| E-commerce | Magento | `nvd`, `cveorg`, `github`, `osv` |
+| CMS | WordPress | `nvd`, `cveorg`, `github`, `osv`, **`wordfence`** |
+| ERP cerrado | SAP | `nvd`, `cveorg`, `github` (CVE públicos; sin SAP Security Notes) |
+| Cloud / OS de proveedor | AWS, Azure, GCP, Windows, Linux… | `nvd`, `cveorg`, `github` |
+| Perímetro / appliances | Fortinet, Cisco, Palo Alto, F5, Check Point, VPN… | `nvd`, `cveorg`, `kev`, `vulncheck-kev` |
+| Vendor sin ecosistema OSV fuerte | WSO2, SQL Server | `nvd`, `cveorg`, `github` |
+
+**Notas**
+
+- **WordPress:** Wordfence cubre plugins/temas que NVD suele omitir o atrasar.
+- **SAP:** solo CVE públicos vía NVD/CVE.org/GitHub. Los Security Notes del portal SAP Support **no** están integrados (sin API pública libre).
+- **OSV:** aplica cuando hay `watchedPackages` / inventario de app con `ecosystem` + `name` (+ versión).
+- **FortiGuard:** liberar los 9 hosts de fuentes; las tecnologías no añaden URLs nuevas.
+
+| Fuente | Rol | Base URL | Endpoint | Qué aporta | Credencial |
+|---|---|---|---|---|---|
+| **NVD (NIST)** API 2.0 | list | `https://services.nvd.nist.gov` | `/rest/json/cves/2.0` | CVSS enriquecido, CWE, estado de análisis | `NVD_API_KEY` (opcional) |
+| **GitHub Advisories** | list | `https://api.github.com` | `/advisories` | Paquetes por ecosistema y GHSA sin CVE | `GITHUB_TOKEN` (opcional) |
+| **CVE.org** Search API | list | `https://www.cve.org` | `/restapiv1/search` | Fuente canónica del programa CVE (respaldo si NVD se atrasa) | — |
+| **Wordfence Intelligence** | list | `https://www.wordfence.com` | `/api/intelligence/v3/vulnerabilities/production` | Plugins/temas WordPress poco cubiertos en NVD | `WORDFENCE_API_KEY` |
+| **OSV.dev** | match | `https://api.osv.dev` | `/v1` | Cruce por *paquete + versión* (npm, Packagist, Maven…) | — |
+| **ENISA EUVD** | enrich | `https://euvdservices.enisa.europa.eu` | `/api/search` | Respaldo UE ante inestabilidad NVD/CVE | — |
+| **CISA KEV** | enrich | `https://www.cisa.gov` | `/sites/default/files/feeds/known_exploited_vulnerabilities.json` | Explotadas activamente (catálogo federal) | — |
+| **VulnCheck KEV** | enrich | `https://api.vulncheck.com` | `/v3/index/vulncheck-kev` | KEV ampliado (mayor cobertura que CISA) | `VULNCHECK_TOKEN` |
+| **FIRST EPSS** | score | `https://api.first.org` | `/data/v1/epss` | Probabilidad de explotación a 30 días | — |
+
+**Whitelist FortiGuard / firewall** (hosts a liberar): `services.nvd.nist.gov`, `api.github.com`, `www.cve.org`, `www.wordfence.com`, `api.osv.dev`, `euvdservices.enisa.europa.eu`, `www.cisa.gov`, `api.vulncheck.com`, `api.first.org`.
 
 **Prioridad (orden por defecto):** KEV > ransomware > EPSS > match de stack > severidad > CVSS.  
 **Fusión:** CVE.org pisa a NVD en CVSS/descripción; CISA KEV pisa a VulnCheck en el flag `kev`.
