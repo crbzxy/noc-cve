@@ -298,38 +298,40 @@ export default function App() {
             <FiltersBar />
           </Box>
 
-          <ExpandableModule
-            id="noc-charts-panel"
-            title="Gráficas"
-            open={chartsOpen}
-            onToggle={() => setChartsOpen((open) => !open)}
-            defaultHeight={389}
-            fixedHeight={389}
-          >
-            <Box
-              sx={{
-                height: '100%',
-                minHeight: 389,
-                display: 'grid',
-                gap: 1,
-                p: 1,
-                boxSizing: 'border-box',
-                gridTemplateColumns: { xs: '1fr', lg: '1.15fr 1fr' },
-              }}
+          {!selectedAppId && (
+            <ExpandableModule
+              id="noc-charts-panel"
+              title="Gráficas"
+              open={chartsOpen}
+              onToggle={() => setChartsOpen((open) => !open)}
+              defaultHeight={389}
+              fixedHeight={389}
             >
-              {initialLoading ? (
-                <>
-                  <Skeleton variant="rounded" sx={{ height: '100%', minHeight: 360 }} />
-                  <Skeleton variant="rounded" sx={{ height: '100%', minHeight: 360 }} />
-                </>
-              ) : (
-                <Suspense fallback={<Skeleton variant="rounded" sx={{ height: '100%', gridColumn: '1 / -1' }} />}>
-                  <SeverityTimeline rows={rows} days={days} />
-                  <TopVulnerableTechsChart rows={rows} technologies={config.technologies} />
-                </Suspense>
-              )}
-            </Box>
-          </ExpandableModule>
+              <Box
+                sx={{
+                  height: '100%',
+                  minHeight: 389,
+                  display: 'grid',
+                  gap: 1,
+                  p: 1,
+                  boxSizing: 'border-box',
+                  gridTemplateColumns: { xs: '1fr', lg: '1.15fr 1fr' },
+                }}
+              >
+                {initialLoading ? (
+                  <>
+                    <Skeleton variant="rounded" sx={{ height: '100%', minHeight: 360 }} />
+                    <Skeleton variant="rounded" sx={{ height: '100%', minHeight: 360 }} />
+                  </>
+                ) : (
+                  <Suspense fallback={<Skeleton variant="rounded" sx={{ height: '100%', gridColumn: '1 / -1' }} />}>
+                    <SeverityTimeline rows={rows} days={days} />
+                    <TopVulnerableTechsChart rows={rows} technologies={config.technologies} />
+                  </Suspense>
+                )}
+              </Box>
+            </ExpandableModule>
+          )}
 
           {selectedAppId && (
             <ExpandableModule
