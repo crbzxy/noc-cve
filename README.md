@@ -2,6 +2,65 @@
 
 Dashboard tipo NOC (pantalla de pared) multi-tecnología: junta CVEs de varias fuentes, las etiqueta según el stack vigilado, quita duplicados por ID y las ordena por riesgo real (más crítico → menos crítico).
 
+## Cómo funciona
+
+```mermaid
+flowchart LR
+  subgraph fuentes [1 Fuentes externas]
+    NVD[NVD]
+    CVEORG[CVE.org]
+    GH[GitHub Advisories]
+    WF[Wordfence]
+    KEV[CISA KEV]
+    VCKEV[VulnCheck KEV]
+    EPSS[FIRST EPSS]
+    OSV[OSV]
+  end
+
+  subgraph corpus [2 Proxy y corpus]
+    Proxy[Vite / Node proxy<br/>secretos solo en servidor]
+    Agg[Agregar y deduplicar por CVE ID]
+    Enrich[Enriquecer KEV + EPSS]
+    Tag[Etiquetar tecnologías]
+    Proxy --> Agg --> Enrich --> Tag
+  end
+
+  subgraph ui [3 Dashboard]
+    Global[Vista global<br/>ventana días · KPIs · gráficas · tabla]
+    AppView[Vista por aplicación<br/>apps.json · librerías · OSV por versión]
+  end
+
+  NVD --> Proxy
+  CVEORG --> Proxy
+  GH --> Proxy
+  WF --> Proxy
+  KEV --> Proxy
+  VCKEV --> Proxy
+  EPSS --> Proxy
+  OSV --> Proxy
+  Tag --> Global
+  Tag --> AppView
+```
+
+El sitio opera en **tres capas**:
+
+1. **Fuentes externas** — NVD, CVE.org, GitHub Advisories, Wordfence, CISA/VulnCheck KEV, FIRST EPSS y OSV. Cada una aporta un rol distinto (listado, enriquecimiento, score o match por versión).
+2. **Proxy + corpus** — Vite/Node hacen de proxy (secretos solo en servidor). Se fusionan registros por CVE ID, se marcan KEV/EPSS y se etiquetan tecnologías. Si una fuente falla, el resto sigue y el pill **Fuentes** muestra el error.
+3. **Dashboard** — dos modos de uso:
+   - **Vista global** (sin aplicación): feed reciente por ventana (24 h → 90 d), KPIs, gráficas y tabla. Sirve para vigilancia NOC del día a día.
+   - **Vista por aplicación** (selector **Aplicación**): cruza `config/apps.json` (runtime, framework, DBs, librerías) con el corpus + OSV por versión. Aparece el panel **Librerías**; las gráficas globales se ocultan porque el valor está en el riesgo del stack.
+
+**Filtros clave**
+
+| Control | Para qué sirve |
+|---|---|
+| Ventana (días) | En vista global recorta por fecha de publicación. Con app, CRITICAL/HIGH de libs pueden mantenerse aunque sean viejos. |
+| Tecnologías | Acota por tags del catálogo (`Todas` = sin filtro de tech). |
+| Solo explotadas | Solo CVE en KEV (CISA/VulnCheck). Si KEV está caído, la lista queda vacía. |
+| Aplicación | Cambia a modo inventario: matching por libs/OSV del stack real. |
+
+**Prioridad de riesgo (orden por defecto):** KEV → ransomware → EPSS → match de stack → severidad → CVSS.
+
 ## Fuente de verdad: `config/sources.json`
 
 Un solo JSON controla:
@@ -103,17 +162,20 @@ npm run dev:mock            # terminal 2
 
 ## Arquitectura
 
+Ver el diagrama Mermaid de la sección **Cómo funciona**. En código:
+
 ```
 config/sources.json         SSOT: fuentes (URL base) + tecnologías + defaults
-public/config/sources.json  copia servida al browser (sync)
+config/apps.json            inventario de apps (runtime / framework / DBs / libs)
+public/config/*.json        copias servidas al browser (sync)
 proxy.config.mjs            arma upstreams desde el JSON
 src/
   config/       schema + loader
   sources/      nvd · cveorg · github · osv · euvd · wordfence · kev · vulncheckKev · epss
-  lib/          aggregate · matchTechnologies · http
-  hooks/        useCves · useSourcesConfig
+  lib/          aggregate · resolveAppStack · matchLibraries · matchTechnologies · http
+  hooks/        useCves · useSourcesConfig · useAppsConfig
   store/        filters (Zustand + persist)
-  components/   KpiRow · SeverityTimeline · SourceStatus · FiltersBar · CveTable · CveDrawer
+  components/   KpiRow · FiltersBar · CveTable · LibraryRiskPanel · SourceStatus · …
 ```
 
 - Las llaves de API solo viven en el proxy y nunca llegan al bundle.
