@@ -2294,6 +2294,75 @@
         "org.springframework.retry:spring-retry:1.3.1",
         "org.springframework:spring-aspects:5.3.12"
       ]
+    },
+    "truper.com": {
+      "tecnologia": "PHP 8.4",
+      "framework": "Magento 2.4.8-p2",
+      "base de datos": [
+        "MySQL",
+        "Redis",
+        "OpenSearch"
+      ],
+      "librerias": [
+        "composer:magento/product-community-edition@2.4.8-p2",
+        "composer:magento/magento2-base@2.4.8-p2",
+        "composer:magento/framework@103.0.8-p2",
+        "composer:elasticsearch/elasticsearch@8.19.0",
+        "composer:guzzlehttp/guzzle@7.10.0",
+        "composer:monolog/monolog@3.9.0",
+        "composer:colinmollenhour/cache-backend-redis@1.17.1",
+        "composer:colinmollenhour/credis@1.17.0",
+        "composer:symfony/http-kernel@7.4.2",
+        "composer:symfony/http-foundation@7.4.1",
+        "composer:mageplaza/module-smtp@4.7.20",
+        "composer:magepal/magento2-googletagmanager@3.0.1"
+      ]
+    },
+    "Fix Ferreterias": {
+      "tecnologia": "PHP 8.4",
+      "framework": "Magento 2.4.9",
+      "base de datos": [
+        "MySQL",
+        "Redis",
+        "OpenSearch"
+      ],
+      "librerias": [
+        "composer:magento/product-community-edition@2.4.9",
+        "composer:magento/magento2-base@2.4.9",
+        "composer:magento/framework@103.0.9",
+        "composer:hyva-themes/magento2-default-theme@1.5.3",
+        "composer:hyva-themes/magento2-theme-module@1.5.3",
+        "composer:hyva-themes/magento2-luma-checkout@1.1.7",
+        "composer:stripe/stripe-payments@4.7.0",
+        "composer:stripe/stripe-php@20.1.0",
+        "composer:elasticsearch/elasticsearch@8.19.0",
+        "composer:guzzlehttp/guzzle@7.15.5",
+        "composer:monolog/monolog@3.12.1",
+        "composer:colinmollenhour/cache-backend-redis@1.18.0",
+        "composer:colinmollenhour/credis@1.17.1",
+        "composer:symfony/http-kernel@8.1.9",
+        "composer:symfony/http-foundation@8.1.9"
+      ]
+    },
+    "manzanillas.mx": {
+      "tecnologia": "PHP 8.2",
+      "framework": "WordPress 7.1.4",
+      "base de datos": [
+        "MariaDB 11"
+      ],
+      "librerias": [
+        "wordpress:wordpress@7.1.4",
+        "wordpress:contact-form-7@6.1.6",
+        "wordpress:google-site-kit@1.190.0",
+        "wordpress:litespeed-cache@7.8.1",
+        "wordpress:wp-mail-smtp@4.9.0",
+        "wordpress:jetpack",
+        "wordpress:updraftplus",
+        "wordpress:limit-login-attempts-reloaded",
+        "wordpress:file-manager-advanced",
+        "wordpress:uncode-js_composer@8.7.1.4",
+        "wordpress:hotjar@1.0.16"
+      ]
     }
   }
 }
