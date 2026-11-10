@@ -27,6 +27,7 @@ interface FiltersState {
   refreshMin: number
   setDays: (d: WindowDays) => void
   toggleSeverity: (s: Severity) => void
+  setSeverities: (s: Severity[]) => void
   toggleSource: (s: SourceId) => void
   setKevOnly: (v: boolean) => void
   toggleTechnology: (id: string) => void
@@ -62,6 +63,7 @@ export const useFilters = create<FiltersState>()(
       ...defaults,
       setDays: (days) => set({ days }),
       toggleSeverity: (s) => set((st) => ({ severities: toggle(st.severities, s) })),
+      setSeverities: (severities) => set({ severities }),
       toggleSource: (s) => set((st) => ({ sources: toggle(st.sources, s) })),
       setKevOnly: (kevOnly) => set({ kevOnly }),
       toggleTechnology: (id) =>

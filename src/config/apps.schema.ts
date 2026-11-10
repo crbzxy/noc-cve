@@ -32,6 +32,14 @@ export function isAppsConfig(value: unknown): value is AppsConfig {
   )
 }
 
+/** Apps fijas al inicio de la lista, en este orden; el resto va alfabético. */
+const PINNED_APPS = ['TEL']
+
+function pinRank(label: string): number {
+  const index = PINNED_APPS.indexOf(label)
+  return index === -1 ? PINNED_APPS.length : index
+}
+
 export function toAppOptions(config: AppsConfig): AppOption[] {
   return Object.entries(config.apps)
     .map(([label, entry]) => ({
@@ -39,7 +47,8 @@ export function toAppOptions(config: AppsConfig): AppOption[] {
       label,
       entry,
     }))
-    .sort((left, right) => left.label.localeCompare(right.label, 'es'))
+    .sort((left, right) =>
+      pinRank(left.label) - pinRank(right.label) || left.label.localeCompare(right.label, 'es'))
 }
 
 export function slugifyAppId(label: string): string {

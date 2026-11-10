@@ -1,7 +1,7 @@
 import type { OsvPackageHit } from '../sources/osv'
 import type { CveRecord, Severity } from '../types'
 import {
-  needleFromLibrary,
+  textNeedlesFromLibrary,
   type TrackedLibrary,
 } from './resolveAppStack'
 
@@ -84,20 +84,24 @@ export function applyLibraryMatches(
     }
   }
 
-  // Texto solo para libs sin consulta OSV (evita O(registros × libs) en apps Maven).
-  const textNeedles = libraries
-    .filter((library) => !library.watched || !queriedKeys.has(library.packageKey))
-    .map((library) => {
-      const needle = needleFromLibrary(library)
-      return needle ? { library, needle } : null
-    })
-    .filter((value): value is { library: TrackedLibrary; needle: string } => Boolean(value))
+  // Texto: libs sin OSV, o Packagist consultado pero sin hits (versión exacta suele salir vacía).
+  const textLibraries = libraries.filter((library) => {
+    if (!library.watched) return true
+    if (!queriedKeys.has(library.packageKey)) return true
+    const hit = packageHits.find((item) => item.packageKey === library.packageKey)
+    return (library.ecosystem === 'Packagist' || library.ecosystem === 'WordPress')
+      && (hit?.vulnIds.length ?? 0) === 0
+  })
+  const textNeedles = textLibraries.flatMap((library) =>
+    textNeedlesFromLibrary(library).map((needle) => ({ library, needle })),
+  )
 
   if (textNeedles.length > 0) {
     for (const record of records) {
       const quick = [
         record.id,
         record.title ?? '',
+        record.description.slice(0, 480),
         record.packages.join(' '),
         record.aliases.join(' '),
       ].join('\n').toLowerCase()

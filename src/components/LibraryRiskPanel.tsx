@@ -131,8 +131,12 @@ export function LibraryRiskPanel({
 
   const selectLibrary = (name: string) => {
     const next = selectedLibrary === name ? null : name
+    // Si el padre maneja la transición (App), no escribir el store aquí en modo urgente.
+    if (onLibrarySelect) {
+      onLibrarySelect(next)
+      return
+    }
     setSelectedLibrary(next)
-    onLibrarySelect?.(next)
   }
 
   const head = (

@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { WatchedPackage } from '../config/sources.schema'
 import { findSource } from '../config/sources.schema'
 import type { CorpusSnapshot } from '../corpus/types'
@@ -12,7 +12,13 @@ import {
 } from '../lib/corpusWindow'
 import { applyLibraryMatches } from '../lib/matchLibraries'
 import { applyTechnologyTags } from '../lib/matchTechnologies'
-import { packageKeyOf, resolveAppStackCached, type ResolvedAppStack } from '../lib/resolveAppStack'
+import {
+  appStackUsesTechFallback,
+  packageKeyOf,
+  resolveAppStackCached,
+  type ResolvedAppStack,
+  type TrackedLibrary,
+} from '../lib/resolveAppStack'
 import { compileSearchPattern, textMatchesSearch } from '../lib/searchText'
 import { fetchCorpus, refreshCorpus } from '../sources/corpus'
 import { fetchEpss } from '../sources/epss'
@@ -24,6 +30,9 @@ import { useSourcesConfig } from './useSourcesConfig'
 
 /** Tope de CVEs a enriquecer con EPSS (los más relevantes del stack). */
 const EPSS_MAX_IDS = 250
+/** Referencias estables: evita re-renders por `?? []` en cada render de useCves. */
+const EMPTY_LIBRARIES: TrackedLibrary[] = []
+const EMPTY_CRITICAL_IDS: string[] = []
 
 export interface SourceHealth {
   id: string
@@ -273,11 +282,12 @@ export function useCves() {
   const vulncheckMeta = findSource(config, 'vulncheck-kev')
   const epssMeta = findSource(config, 'epss')
 
-  const reloadCorpus = () => {
+  const refetchCorpusQuery = corpus.refetch
+  const reloadCorpus = useCallback(() => {
     void refreshCorpus()
-      .then(() => corpus.refetch())
-      .catch(() => corpus.refetch())
-  }
+      .then(() => refetchCorpusQuery())
+      .catch(() => refetchCorpusQuery())
+  }, [refetchCorpusQuery])
 
   const healthList: SourceHealth[] = useMemo(() => {
     const snapshot = corpus.data
@@ -316,19 +326,21 @@ export function useCves() {
   }, [
     corpus.data, osvHits, epss, osvOn, osvConfigOn, epssConfigOn, epssIds.length, sources, packageHits,
     nvdMeta, ghMeta, cveorgMeta, wordfenceMeta, osvMeta, euvdMeta, kevMeta, vulncheckMeta, epssMeta,
-    epss.data,
+    reloadCorpus,
   ])
 
   return {
     records,
     packageHits,
-    appLibraries: appStack?.libraries ?? [],
+    appLibraries: appStack?.libraries ?? EMPTY_LIBRARIES,
     libraryRiskLoading: Boolean(selectedAppId) && osvOn && osvHits.isFetching,
     health: healthList,
     corpusGeneratedAt: corpus.data?.generatedAt ?? null,
     corpusIngestMs: corpus.data?.ingestMs ?? null,
-    newCriticalIds: corpus.data?.newCriticalIds ?? [],
+    newCriticalIds: corpus.data?.newCriticalIds ?? EMPTY_CRITICAL_IDS,
     isFetching: corpus.isFetching || osvHits.isFetching || epss.isFetching,
+    /** Solo la primera carga: después keepPreviousData mantiene la vista mientras refresca. */
+    initialLoading: corpus.isPending,
     refetchAll: () => {
       reloadCorpus()
       void osvHits.refetch()
@@ -367,6 +379,10 @@ function filterCveRecords(
   const q = options.search.trim().toLowerCase()
   const searchPattern = q ? compileSearchPattern(q) : null
   const appTechSet = options.appStack ? new Set(options.appStack.techIds) : null
+  const appScopeTechSet = options.appStack
+    ? new Set(options.appStack.scopeTechIds)
+    : null
+  const techFallback = Boolean(options.appStack && appStackUsesTechFallback(options.appStack))
   const techSet = !appTechSet && !options.techAll && options.technologies.length > 0
     ? new Set(options.technologies)
     : null
@@ -382,7 +398,13 @@ function filterCveRecords(
     if (libraryFilter) {
       if (!c.matchedLibraries.includes(libraryFilter)) return false
     } else if (options.appStack && options.appStack.libraries.length > 0) {
-      if (c.matchedLibraries.length === 0) return false
+      const libraryHit = c.matchedLibraries.length > 0
+      // Solo frameworks de producto (magento/wordpress…), no el lenguaje suelto.
+      const scopeTechHit = Boolean(
+        appScopeTechSet
+        && c.technologies.some((techId) => appScopeTechSet.has(techId)),
+      )
+      if (!libraryHit && !(techFallback && scopeTechHit)) return false
     } else if (appTechSet) {
       if (!c.technologies.some((techId) => appTechSet.has(techId))) return false
     } else if (techSet && !c.technologies.some((techId) => techSet.has(techId))) {

@@ -1,7 +1,7 @@
 import type { WatchedPackage } from '../config/sources.schema'
 import type { AppInventoryEntry } from '../config/apps.schema'
 
-export type LibraryEcosystem = 'Maven' | 'npm' | 'PyPI' | 'Go'
+export type LibraryEcosystem = 'Maven' | 'npm' | 'PyPI' | 'Go' | 'Packagist' | 'WordPress'
 
 export type LibraryTrackKind = 'queryable' | 'internal'
 
@@ -15,30 +15,61 @@ export interface TrackedLibrary {
   ecosystem: LibraryEcosystem
   kind: LibraryTrackKind
   needle: string
+  /** Agujas extra para cruce textual (p. ej. "magento", "adobe commerce"). */
+  textNeedles?: string[]
   /** Clave estable para maps OSV ↔ UI. */
   packageKey: string
   watched?: WatchedPackage
 }
 
 export interface ResolvedAppStack {
+  /** Runtime + framework + DBs + hints de libs (selector / contexto amplio). */
   techIds: string[]
+  /**
+   * Runtime + framework (p. ej. php+magento) para el selector de tecnologías.
+   * Relación legible: Magento/WordPress ⇒ PHP.
+   */
+  primaryTechIds: string[]
+  /**
+   * Frameworks de alcance para filtrar CVEs (sin lenguaje suelto).
+   * Evita que "php" meta CVE genéricos de Python/PHP no relacionados al producto.
+   */
+  scopeTechIds: string[]
   packageNeedles: string[]
   watchedPackages: WatchedPackage[]
   libraries: TrackedLibrary[]
 }
 
+/** Frameworks donde el inventario Packagist/WP necesita respaldo por tech. */
+const SCOPE_TECH_IDS = new Set(['magento', 'wordpress', 'laravel', 'symfony'])
+
 const RUNTIME_MAP: Array<{ pattern: RegExp; techId: string }> = [
   { pattern: /\bjava\b/i, techId: 'java' },
+  { pattern: /\bphp\b/i, techId: 'php' },
 ]
 
 const FRAMEWORK_MAP: Array<{ pattern: RegExp; techId: string }> = [
   { pattern: /spring/i, techId: 'spring' },
+  { pattern: /magento/i, techId: 'magento' },
+  { pattern: /wordpress|wp[-\s]?engine/i, techId: 'wordpress' },
+  { pattern: /laravel/i, techId: 'laravel' },
+  { pattern: /symfony/i, techId: 'symfony' },
 ]
+
+/** Magento / WordPress / Laravel / Symfony implican PHP en el inventario. */
+const FRAMEWORK_IMPLIES_RUNTIME: Record<string, string> = {
+  magento: 'php',
+  wordpress: 'php',
+  laravel: 'php',
+  symfony: 'php',
+}
 
 const DATABASE_MAP: Array<{ pattern: RegExp; techId: string }> = [
   { pattern: /mongo/i, techId: 'mongodb' },
   { pattern: /redis/i, techId: 'redis' },
   { pattern: /\bsql\b|mssql|sql\s*server/i, techId: 'sqlserver' },
+  { pattern: /mysql|mariadb|innodb/i, techId: 'mysql' },
+  { pattern: /elasticsearch|opensearch/i, techId: 'elasticsearch' },
   { pattern: /\bsap\b/i, techId: 'sap' },
 ]
 
@@ -48,10 +79,12 @@ const LIBRARY_TECH_HINTS: Array<{ pattern: RegExp; techId: string }> = [
   { pattern: /tomcat/i, techId: 'tomcat' },
   { pattern: /prometheus|micrometer-registry-prometheus/i, techId: 'prometheus' },
   { pattern: /mongodb|mongo-java/i, techId: 'mongodb' },
-  { pattern: /redis|jedis|jrejson/i, techId: 'redis' },
+  { pattern: /redis|jedis|jrejson|credis/i, techId: 'redis' },
   { pattern: /mssql|sqlserver/i, techId: 'sqlserver' },
+  { pattern: /elasticsearch|opensearch/i, techId: 'elasticsearch' },
   { pattern: /sapjco|\.sap\b|commons-sap/i, techId: 'sap' },
   { pattern: /spring/i, techId: 'spring' },
+  { pattern: /magento\//i, techId: 'magento' },
 ]
 
 /** groupId conocidos cuando el inventario solo trae artifactId_versión. */
@@ -146,10 +179,90 @@ function normalizeVersion(raw?: string): string | undefined {
   let version = raw.trim()
   if (!version || /snapshot/i.test(version)) return undefined
   version = version.replace(/\.jre\d+$/i, '')
+  version = version.replace(/^v(?=\d)/i, '')
   return version || undefined
 }
 
+/** `composer:vendor/package@version` o `packagist:vendor/package@version`. */
+function parseComposerLibrary(raw: string): {
+  name: string
+  version?: string
+  artifactId: string
+} | null {
+  const match = raw.trim().match(/^(?:composer|packagist):([^@\s]+)(?:@([^\s]+))?$/i)
+  if (!match) return null
+  const name = match[1]
+  if (!name.includes('/')) return null
+  return {
+    name,
+    version: match[2],
+    artifactId: name.split('/').at(-1) ?? name,
+  }
+}
+
+/** Nombres demasiado genéricos: no usarlos como aguja suelta (evita "framework" → CVE de Python). */
+const GENERIC_COMPOSER_SHORT_NAMES = new Set([
+  'framework', 'core', 'base', 'common', 'commons', 'shared', 'support', 'utils',
+  'util', 'helper', 'helpers', 'client', 'server', 'http', 'cache', 'config',
+  'default', 'theme', 'module', 'bridge', 'runtime', 'standard', 'api', 'sdk',
+])
+
+function composerTextNeedles(packageName: string): string[] {
+  const lower = packageName.toLowerCase()
+  const needles = [lower]
+  const shortName = lower.split('/')[1]
+  // Solo el artifact corto si no es genérico (p. ej. monolog sí; framework no).
+  if (shortName && shortName.length >= 5 && !GENERIC_COMPOSER_SHORT_NAMES.has(shortName)) {
+    needles.push(shortName)
+  }
+  if (lower.startsWith('magento/')) {
+    // Magento: solo tokens del producto, nunca "framework" suelto.
+    needles.push('magento', 'adobe commerce', 'magento open source', 'magento community')
+  }
+  if (lower.startsWith('hyva-themes/')) needles.push('hyva')
+  if (lower.startsWith('stripe/')) needles.push('stripe')
+  if (lower.startsWith('mageplaza/')) needles.push('mageplaza')
+  if (lower.startsWith('magepal/')) needles.push('magepal')
+  if (lower.startsWith('guzzlehttp/')) needles.push('guzzle')
+  if (lower.startsWith('monolog/')) needles.push('monolog')
+  if (lower.startsWith('symfony/')) {
+    if (shortName) needles.push(`symfony/${shortName}`)
+    // "symfony" solo si el paquete no es un polyfill genérico ruidoso.
+    if (shortName && !shortName.startsWith('polyfill')) needles.push('symfony')
+  }
+  return uniq(needles)
+}
+
+/** `wordpress:plugin-slug@version` o `wordpress:wordpress@7.1.4` (core). */
+function parseWordPressLibrary(raw: string): {
+  name: string
+  version?: string
+  artifactId: string
+  textNeedles: string[]
+} | null {
+  const match = raw.trim().match(/^wordpress:([^@\s]+)(?:@([^\s]+))?$/i)
+  if (!match) return null
+  const name = match[1].toLowerCase()
+  const version = match[2]
+  if (name === 'wordpress' || name === 'core') {
+    return {
+      name: 'WordPress',
+      version,
+      artifactId: 'wordpress',
+      textNeedles: ['wordpress', 'wp-admin', 'wp-includes'],
+    }
+  }
+  return {
+    name,
+    version,
+    artifactId: name,
+    textNeedles: [name, name.replace(/-/g, ' ')],
+  }
+}
+
 function detectEcosystem(raw: string, groupId?: string): LibraryEcosystem {
+  if (/^wordpress:/i.test(raw)) return 'WordPress'
+  if (/^(?:composer|packagist):/i.test(raw)) return 'Packagist'
   if (/^npm:|node_modules|@[\w-]+\//i.test(raw)) return 'npm'
   if (/^pypi:|pip:/i.test(raw)) return 'PyPI'
   if (/^go:|golang\.org\//i.test(raw)) return 'Go'
@@ -199,6 +312,43 @@ export function packageKeyOf(ecosystem: string, name: string, version?: string):
 }
 
 export function trackLibrary(raw: string): TrackedLibrary | null {
+  const wordpress = parseWordPressLibrary(raw)
+  if (wordpress) {
+    const version = normalizeVersion(wordpress.version)
+    const ecosystem: LibraryEcosystem = 'WordPress'
+    return {
+      raw,
+      displayName: wordpress.name === 'WordPress' ? 'WordPress' : wordpress.name,
+      artifactId: wordpress.artifactId,
+      version,
+      ecosystem,
+      kind: 'queryable',
+      needle: wordpress.textNeedles[0] ?? wordpress.name,
+      textNeedles: wordpress.textNeedles,
+      packageKey: packageKeyOf(ecosystem, wordpress.name, version),
+      watched: { ecosystem, name: wordpress.name, version },
+    }
+  }
+
+  const composer = parseComposerLibrary(raw)
+  if (composer) {
+    const version = normalizeVersion(composer.version)
+    const ecosystem: LibraryEcosystem = 'Packagist'
+    const textNeedles = composerTextNeedles(composer.name)
+    return {
+      raw,
+      displayName: composer.name,
+      artifactId: composer.artifactId,
+      version,
+      ecosystem,
+      kind: 'queryable',
+      needle: textNeedles[0] ?? composer.name.toLowerCase(),
+      textNeedles,
+      packageKey: packageKeyOf(ecosystem, composer.name, version),
+      watched: { ecosystem, name: composer.name, version },
+    }
+  }
+
   const parsed = parseLibraryName(raw)
   if (!parsed.name || parsed.name.length < 2) return null
 
@@ -236,10 +386,30 @@ export function needleFromLibrary(library: TrackedLibrary): string | undefined {
   return library.needle
 }
 
+export function textNeedlesFromLibrary(library: TrackedLibrary): string[] {
+  if (library.kind === 'internal') return []
+  if (library.textNeedles && library.textNeedles.length > 0) {
+    return library.textNeedles.filter((needle) => needle.length >= TEXT_NEEDLE_MIN)
+  }
+  const needle = needleFromLibrary(library)
+  return needle ? [needle] : []
+}
+
+/** true si el stack debe aceptar CVEs por framework de alcance además del match de libs. */
+export function appStackUsesTechFallback(stack: ResolvedAppStack): boolean {
+  return stack.scopeTechIds.length > 0
+}
+
 export function resolveAppStack(entry: AppInventoryEntry): ResolvedAppStack {
-  const techIds: string[] = []
-  addMapped(techIds, entry.tecnologia, RUNTIME_MAP)
-  addMapped(techIds, entry.framework, FRAMEWORK_MAP)
+  const primaryTechIds: string[] = []
+  addMapped(primaryTechIds, entry.tecnologia, RUNTIME_MAP)
+  addMapped(primaryTechIds, entry.framework, FRAMEWORK_MAP)
+  for (const techId of [...primaryTechIds]) {
+    const implied = FRAMEWORK_IMPLIES_RUNTIME[techId]
+    if (implied) primaryTechIds.push(implied)
+  }
+
+  const techIds = [...primaryTechIds]
   for (const database of entry['base de datos'] ?? []) {
     addMapped(techIds, database, DATABASE_MAP)
   }
@@ -251,13 +421,18 @@ export function resolveAppStack(entry: AppInventoryEntry): ResolvedAppStack {
     .map(trackLibrary)
     .filter((value): value is TrackedLibrary => Boolean(value))
 
-  const packageNeedles = uniq(libraries.map(needleFromLibrary).filter((value): value is string => Boolean(value)))
+  const packageNeedles = uniq(
+    libraries.flatMap((library) => textNeedlesFromLibrary(library)),
+  )
   const watchedPackages = libraries
     .map((library) => library.watched)
     .filter((value): value is WatchedPackage => Boolean(value))
 
+  const uniquePrimary = uniq(primaryTechIds)
   return {
     techIds: uniq(techIds),
+    primaryTechIds: uniquePrimary,
+    scopeTechIds: uniquePrimary.filter((techId) => SCOPE_TECH_IDS.has(techId)),
     packageNeedles,
     watchedPackages,
     libraries,
