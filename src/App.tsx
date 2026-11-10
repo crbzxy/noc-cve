@@ -1,25 +1,25 @@
+import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
 import FullscreenIcon from '@mui/icons-material/Fullscreen'
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit'
+import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
-import MenuIcon from '@mui/icons-material/Menu'
-import MenuOpenIcon from '@mui/icons-material/MenuOpen'
 import RefreshIcon from '@mui/icons-material/Refresh'
-import ShieldIcon from '@mui/icons-material/Shield'
-import { Box, Chip, IconButton, LinearProgress, Paper, Stack, Tooltip, Typography } from '@mui/material'
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
+import { Box, Chip, IconButton, LinearProgress, MenuItem, Paper, Select, Skeleton, Stack, Tooltip, Typography } from '@mui/material'
+import { useColorScheme } from '@mui/material/styles'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useState, useTransition } from 'react'
 import { AppSelect } from './components/AppSelect'
-import { CveDrawer } from './components/CveDrawer'
-import { CveTable } from './components/CveTable'
+import { CveSection } from './components/CveSection'
 import { ExpandableModule } from './components/ExpandableModule'
 import { ExportExcelButton } from './components/ExportExcelButton'
 import { FiltersBar } from './components/FiltersBar'
 import { HeaderClock } from './components/HeaderClock'
 import { KpiRow } from './components/KpiRow'
 import { LibraryRiskPanel } from './components/LibraryRiskPanel'
-import { SourceStatus } from './components/SourceStatus'
-import { TechnologySelect } from './components/TechnologySelect'
+import { SearchBox } from './components/SearchBox'
+import { SourceHealthPill, SourceStatus } from './components/SourceStatus'
 
 const SeverityTimeline = lazy(async () => {
   const module = await import('./components/SeverityTimeline')
@@ -34,17 +34,17 @@ import { useCveViews, useCves } from './hooks/useCves'
 import { buildLibraryRiskRows } from './lib/matchLibraries'
 import { useSourcesConfig } from './hooks/useSourcesConfig'
 import { useFilters } from './store/filters'
-import { SEVERITY_COLOR, SEVERITY_INK } from './theme'
-import type { CveRecord, Severity } from './types'
+import { HEADER_BG, SEVERITY_COLOR, SEVERITY_INK } from './theme'
+import type { Severity } from './types'
 
 const LIBRARY_SEVERITY_ORDER: Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'NONE']
 /** Conteos de librerías (no de CVEs): evita confundir con el KPI. */
 const LIBRARY_SEVERITY_COUNT_LABEL: Record<Severity, { one: string; many: string }> = {
-  CRITICAL: { one: 'lib crítica', many: 'libs críticas' },
-  HIGH: { one: 'lib alta', many: 'libs altas' },
-  MEDIUM: { one: 'lib media', many: 'libs medias' },
-  LOW: { one: 'lib baja', many: 'libs bajas' },
-  NONE: { one: 'lib sin CVSS', many: 'libs sin CVSS' },
+  CRITICAL: { one: 'librería con riesgo crítico', many: 'librerías con riesgo crítico' },
+  HIGH: { one: 'librería con riesgo alto', many: 'librerías con riesgo alto' },
+  MEDIUM: { one: 'librería con riesgo medio', many: 'librerías con riesgo medio' },
+  LOW: { one: 'librería con riesgo bajo', many: 'librerías con riesgo bajo' },
+  NONE: { one: 'librería sin riesgo', many: 'librerías sin riesgo' },
 }
 
 const SIDEBAR_WIDTH = 248
@@ -52,7 +52,7 @@ const SIDEBAR_STORAGE_KEY = 'noc-cve-sidebar-open'
 const CHARTS_STORAGE_KEY = 'noc-cve-charts-open'
 const TABLE_STORAGE_KEY = 'noc-cve-table-open'
 const LIBS_STORAGE_KEY = 'noc-cve-libs-open'
-const HEADER_HEIGHT = 52
+const HEADER_HEIGHT = 64
 
 function readBooleanStorage(key: string, fallback: boolean): boolean {
   try {
@@ -77,7 +77,7 @@ export default function App() {
   const { options: appOptions } = useAppsConfig()
   const {
     records, packageHits, appLibraries, libraryRiskLoading, health, isFetching, refetchAll,
-    corpusGeneratedAt, newCriticalIds,
+    corpusGeneratedAt, newCriticalIds, initialLoading,
   } = useCves()
   // Diferir el recálculo pesado mantiene la UI responsiva al cambiar de app.
   const deferredRecords = useDeferredValue(records)
@@ -92,8 +92,12 @@ export default function App() {
   const selectedAppId = useFilters((s) => s.selectedAppId)
   const selectedLibrary = useFilters((s) => s.selectedLibrary)
   const setSelectedLibrary = useFilters((s) => s.setSelectedLibrary)
+  const { mode, systemMode, setMode: setColorMode } = useColorScheme()
+  // mode es undefined en el primer render; 'system' se resuelve al modo real del SO.
+  const colorMode = (mode === 'system' ? systemMode : mode) ?? 'dark'
+  const refreshMin = useFilters((s) => s.refreshMin)
+  const setRefreshMin = useFilters((s) => s.setRefreshMin)
   const selectedAppLabel = appOptions.find((option) => option.id === selectedAppId)?.label
-  const [selected, setSelected] = useState<CveRecord | null>(null)
   const [fs, setFs] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(() => readBooleanStorage(SIDEBAR_STORAGE_KEY, false))
   const [chartsOpen, setChartsOpen] = useState(() => readBooleanStorage(CHARTS_STORAGE_KEY, false))
@@ -116,7 +120,7 @@ export default function App() {
   const toggleFs = () =>
     document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()
 
-  const hasSourceError = health.some((h) => h.status === 'error')
+  const kevUnavailable = health.some((h) => h.id === 'kev' && h.status === 'error')
   const librarySeverityCounts = useMemo(() => {
     const counts: Partial<Record<Severity, number>> = {}
     for (const row of libraryRisk) {
@@ -141,33 +145,27 @@ export default function App() {
           flexShrink: 0,
           height: HEADER_HEIGHT,
           zIndex: 10,
-          bgcolor: 'background.default',
+          bgcolor: HEADER_BG,
           borderBottom: 1,
           borderColor: 'divider',
         }}
       >
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', px: 2, height: '100%' }}>
-          <Tooltip title={sidebarOpen ? 'Cerrar fuentes' : 'Abrir fuentes'}>
-            <IconButton
-              onClick={() => setSidebarOpen((open) => !open)}
-              aria-label={sidebarOpen ? 'Cerrar panel de fuentes' : 'Abrir panel de fuentes'}
-              aria-expanded={sidebarOpen}
-              size="small"
-              color={hasSourceError && !sidebarOpen ? 'error' : 'default'}
-            >
-              {sidebarOpen ? <MenuOpenIcon /> : <MenuIcon />}
-            </IconButton>
-          </Tooltip>
-          <ShieldIcon color="primary" fontSize="small" />
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', px: 3, height: '100%' }}>
+          <ShieldOutlinedIcon color="primary" sx={{ fontSize: 22 }} />
           <Typography
             component="h1"
-            sx={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}
+            sx={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', whiteSpace: 'nowrap', pr: 1 }}
           >
             Truper · NOC CVE
           </Typography>
-          <TechnologySelect minWidth={220} />
-          <AppSelect minWidth={240} />
+          <SearchBox />
+          <AppSelect width={240} />
           <Box sx={{ flex: 1 }} />
+          <SourceHealthPill
+            health={health}
+            open={sidebarOpen}
+            onToggle={() => setSidebarOpen((open) => !open)}
+          />
           {newCriticalIds.length > 0 && (
             <Tooltip title={newCriticalIds.slice(0, 12).join(', ') + (newCriticalIds.length > 12 ? '…' : '')}>
               <Chip
@@ -180,11 +178,23 @@ export default function App() {
           )}
           {corpusGeneratedAt != null && (
             <Tooltip title={`Corpus ingerido ${new Date(corpusGeneratedAt).toLocaleString('es-MX')}`}>
-              <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 160 }}>
-                Datos {formatDistanceToNow(corpusGeneratedAt, { locale: es, addSuffix: true })}
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 170 }}>
+                Actualizado {formatDistanceToNow(corpusGeneratedAt, { locale: es, addSuffix: true })}
               </Typography>
             </Tooltip>
           )}
+          <Select
+            variant="standard"
+            disableUnderline
+            value={refreshMin}
+            onChange={(event) => setRefreshMin(Number(event.target.value))}
+            inputProps={{ 'aria-label': 'Frecuencia de actualización' }}
+            sx={{ fontSize: 12, color: 'text.secondary', '& .MuiSelect-select': { py: 0 } }}
+          >
+            {[0, 5, 15, 30, 60].map((v) => (
+              <MenuItem key={v} value={v}>{v === 0 ? 'manual' : `cada ${v} min`}</MenuItem>
+            ))}
+          </Select>
           <HeaderClock />
           <ExportExcelButton
             cves={rows}
@@ -201,6 +211,15 @@ export default function App() {
                 <RefreshIcon fontSize="small" />
               </IconButton>
             </span>
+          </Tooltip>
+          <Tooltip title={colorMode === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
+            <IconButton
+              size="small"
+              onClick={() => setColorMode(colorMode === 'dark' ? 'light' : 'dark')}
+              aria-label={colorMode === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            >
+              {colorMode === 'dark' ? <LightModeOutlinedIcon fontSize="small" /> : <DarkModeOutlinedIcon fontSize="small" />}
+            </IconButton>
           </Tooltip>
           <Tooltip title={fs ? 'Salir de pantalla completa' : 'Modo pared'}>
             <IconButton onClick={toggleFs} aria-label="Pantalla completa" size="small">
@@ -263,16 +282,16 @@ export default function App() {
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            gap: 1,
-            px: 2,
-            py: 1.5,
+            gap: 2,
+            px: 3,
+            py: 2.5,
             overflow: 'hidden',
             opacity: viewsPending ? 0.88 : 1,
             transition: 'opacity 160ms ease',
           }}
         >
           <Box sx={{ flexShrink: 0 }}>
-            <KpiRow rows={rows} />
+            <KpiRow rows={rows} kevUnavailable={kevUnavailable} loading={initialLoading} />
           </Box>
 
           <Box sx={{ flexShrink: 0 }}>
@@ -298,10 +317,17 @@ export default function App() {
                 gridTemplateColumns: { xs: '1fr', lg: '1.15fr 1fr' },
               }}
             >
-              <Suspense fallback={<Box sx={{ height: '100%' }} />}>
-                <SeverityTimeline rows={rows} days={days} />
-                <TopVulnerableTechsChart rows={rows} technologies={config.technologies} />
-              </Suspense>
+              {initialLoading ? (
+                <>
+                  <Skeleton variant="rounded" sx={{ height: '100%', minHeight: 360 }} />
+                  <Skeleton variant="rounded" sx={{ height: '100%', minHeight: 360 }} />
+                </>
+              ) : (
+                <Suspense fallback={<Skeleton variant="rounded" sx={{ height: '100%', gridColumn: '1 / -1' }} />}>
+                  <SeverityTimeline rows={rows} days={days} />
+                  <TopVulnerableTechsChart rows={rows} technologies={config.technologies} />
+                </Suspense>
+              )}
             </Box>
           </ExpandableModule>
 
@@ -366,6 +392,7 @@ export default function App() {
                 embedded
                 onLibrarySelect={(libraryName) => {
                   startFilterTransition(() => {
+                    setSelectedLibrary(libraryName)
                     if (libraryName) {
                       setTableOpen(true)
                       setLibsOpen(true)
@@ -376,33 +403,16 @@ export default function App() {
             </ExpandableModule>
           )}
 
-          <ExpandableModule
-            id="noc-cve-table-panel"
-            title="CVEs"
-            count={rows.length}
+          <CveSection
+            rows={rows}
+            loading={initialLoading}
             open={tableOpen}
             onToggle={() => setTableOpen((open) => !open)}
-            defaultHeight={320}
-            trailing={selectedLibrary ? (
-              <Chip
-                size="small"
-                color="warning"
-                variant="outlined"
-                label={selectedLibrary}
-                onDelete={(event) => {
-                  event.stopPropagation()
-                  setSelectedLibrary(null)
-                }}
-                onClick={(event) => event.stopPropagation()}
-              />
-            ) : undefined}
-          >
-            <CveTable rows={rows} onSelect={setSelected} embedded />
-          </ExpandableModule>
+            selectedLibrary={selectedLibrary}
+            onClearLibrary={() => setSelectedLibrary(null)}
+          />
         </Box>
       </Box>
-
-      <CveDrawer cve={selected} onClose={() => setSelected(null)} />
     </Box>
   )
 }

@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NOC · CVE Watch</title>
+    <script>
+      // Aplica el modo guardado por MUI (useColorScheme) antes del primer pintado: evita el destello oscuro.
+      try {
+        var mode = localStorage.getItem('mui-mode') || 'dark'
+        if (mode === 'system') mode = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+        document.documentElement.setAttribute('data-noc-theme', mode === 'light' ? 'light' : 'dark')
+      } catch (e) {
+        document.documentElement.setAttribute('data-noc-theme', 'dark')
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

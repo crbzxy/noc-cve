@@ -1,18 +1,21 @@
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment'
 import {
   Box, Chip, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
-  TablePagination, TableRow, TableSortLabel, Tooltip, Typography,
+  Skeleton, TablePagination, TableRow, TableSortLabel, Tooltip, Typography,
 } from '@mui/material'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { useSourcesConfig } from '../hooks/useSourcesConfig'
 import { riskScore } from '../lib/aggregate'
-import { KEV_COLOR, MONO, SEVERITY_COLOR } from '../theme'
+import {
+  BORDER, BORDER_STRONG, KEV_COLOR, MONO, PACKAGE_TEXT, PRIMARY, ROW_SELECTED, SEVERITY_COLOR, SEVERITY_LABEL,
+  SEVERITY_TEXT, TAG_BG,
+} from '../theme'
 import type { CveRecord, SourceId } from '../types'
-import { SeverityChip } from './SeverityChip'
 
 type SortKey = 'risk' | 'severity' | 'cvss' | 'epss' | 'published'
+const SKELETON_ROWS = 10
 const SEV_ORDER = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 }
 
 const SOURCE_SHORT: Record<SourceId, string> = {
@@ -35,13 +38,195 @@ const sorters: Record<Exclude<SortKey, 'risk'>, (a: CveRecord, b: CveRecord) => 
   published: (a, b) => (a.published ?? '').localeCompare(b.published ?? ''),
 }
 
+const ROW_SX = {
+  cursor: 'pointer',
+  '&.Mui-selected, &.Mui-selected:hover': { bgcolor: ROW_SELECTED },
+  '& > td': { py: 1.25 },
+} as const
+
+const ID_STACK_SX = { alignItems: 'center' } as const
+const CVE_ID_SX = { fontFamily: MONO, fontSize: 12.5, fontWeight: 500 } as const
+const TITLE_SX = { fontWeight: 600, fontSize: 13.5 } as const
+const META_STACK_SX = { mt: 0.625, flexWrap: 'wrap', alignItems: 'center' } as const
+const TECH_TAG_SX = {
+  fontSize: 11,
+  px: 0.875,
+  py: 0.25,
+  borderRadius: '5px',
+  bgcolor: TAG_BG,
+  color: 'text.secondary',
+} as const
+const PACKAGE_SX = { fontFamily: MONO, fontSize: 11, color: PACKAGE_TEXT } as const
+const SOURCE_TAG_SX = {
+  fontSize: 10.5,
+  fontWeight: 600,
+  px: 0.625,
+  borderRadius: '4px',
+  border: `1px solid ${BORDER_STRONG}`,
+  color: 'text.secondary',
+} as const
+const CVSS_SX = { fontFamily: MONO, fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap' } as const
+const CVSS_VERSION_SX = { fontSize: 10, fontWeight: 400 } as const
+const EPSS_CELL_SX = { width: 120 } as const
+const EPSS_VALUE_SX = { fontFamily: MONO, fontSize: 12 } as const
+const EPSS_TRACK_SX = { mt: 0.5, height: 4, borderRadius: '2px', bgcolor: BORDER, overflow: 'hidden' } as const
+const PUBLISHED_SX = { whiteSpace: 'nowrap', fontSize: 12, color: 'text.secondary' } as const
+const SKELETON_ROW_SX = { '& > td': { py: 1.25 } } as const
+const EMPTY_CELL_SX = { py: 6, textAlign: 'center', color: 'text.secondary' } as const
+const TABLE_CONTAINER_SX = { flex: 1, minHeight: 0, overflow: 'auto' } as const
+const PAGINATION_SX = { flexShrink: 0, borderTop: 1, borderColor: 'divider' } as const
+const ROOT_SX = { height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' } as const
+
+const CveRow = memo(function CveRow({
+  cve,
+  selected,
+  techLabel,
+  onSelect,
+}: {
+  cve: CveRecord
+  selected: boolean
+  techLabel: Record<string, string>
+  onSelect: (cve: CveRecord) => void
+}) {
+  const idCellSx = useMemo(
+    () => ({
+      whiteSpace: 'nowrap' as const,
+      boxShadow: `inset 4px 0 0 ${SEVERITY_COLOR[cve.severity]}`,
+      pl: 2,
+    }),
+    [cve.severity],
+  )
+  const severityLabelSx = useMemo(
+    () => ({
+      fontSize: 11,
+      fontWeight: 600,
+      color: SEVERITY_TEXT[cve.severity],
+      mt: 0.25,
+    }),
+    [cve.severity],
+  )
+  const epssBarSx = useMemo(
+    () => (cve.epss
+      ? { height: '100%', width: `${Math.max(2, cve.epss.percentile * 100)}%`, bgcolor: PRIMARY }
+      : undefined),
+    [cve.epss],
+  )
+
+  return (
+    <TableRow
+      hover
+      tabIndex={0}
+      role="button"
+      aria-label={`Abrir detalle de ${cve.id}`}
+      onClick={() => onSelect(cve)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onSelect(cve)
+        }
+      }}
+      selected={selected}
+      sx={ROW_SX}
+    >
+      <TableCell sx={idCellSx}>
+        <Stack direction="row" spacing={0.75} sx={ID_STACK_SX}>
+          {cve.kev && (
+            <Tooltip title={`En CISA KEV desde ${cve.kev.dateAdded}${cve.kev.ransomware ? ' · usado en ransomware' : ''}`}>
+              <LocalFireDepartmentIcon
+                fontSize="small"
+                sx={{ color: cve.kev.ransomware ? SEVERITY_COLOR.CRITICAL : KEV_COLOR }}
+                aria-label="Explotada activamente"
+              />
+            </Tooltip>
+          )}
+          <Typography sx={CVE_ID_SX}>{cve.id}</Typography>
+        </Stack>
+        <Typography component="div" sx={severityLabelSx}>
+          {SEVERITY_LABEL[cve.severity]}
+        </Typography>
+      </TableCell>
+      <TableCell sx={{ maxWidth: 560 }}>
+        <Typography variant="body2" noWrap sx={TITLE_SX} title={cve.title || cve.description}>
+          {cve.title || cve.description || 'Sin descripción'}
+        </Typography>
+        {(cve.packages.length > 0 || cve.technologies.length > 0 || cve.matchedLibraries.length > 0 || cve.sources.length > 0) && (
+          <Stack direction="row" spacing={0.625} sx={META_STACK_SX} useFlexGap>
+            {cve.matchedLibraries.slice(0, 3).map((library) => (
+              <Chip key={library} size="small" color="warning" variant="outlined" label={library} />
+            ))}
+            {cve.matchedLibraries.length > 3 && (
+              <Chip size="small" color="warning" variant="outlined" label={`+${cve.matchedLibraries.length - 3}`} />
+            )}
+            {cve.technologies.slice(0, 4).map((techId) => (
+              <Box key={techId} component="span" sx={TECH_TAG_SX}>
+                {techLabel[techId] ?? techId}
+              </Box>
+            ))}
+            {cve.packages.length > 0 && (
+              <Typography variant="caption" sx={PACKAGE_SX} noWrap>
+                {cve.packages.slice(0, 2).join('  ')}{cve.packages.length > 2 ? `  +${cve.packages.length - 2}` : ''}
+              </Typography>
+            )}
+            {cve.sources.map((source) => (
+              <Box key={source} component="span" sx={SOURCE_TAG_SX}>
+                {SOURCE_SHORT[source] ?? source}
+              </Box>
+            ))}
+          </Stack>
+        )}
+      </TableCell>
+      <TableCell align="right" sx={CVSS_SX}>
+        {cve.cvss?.toFixed(1) ?? '—'}
+        {cve.cvssVersion && (
+          <Typography component="span" sx={CVSS_VERSION_SX} color="text.secondary">
+            {' '}
+            v{cve.cvssVersion.split('.')[0]}
+          </Typography>
+        )}
+      </TableCell>
+      <TableCell sx={EPSS_CELL_SX}>
+        {cve.epss && epssBarSx ? (
+          <Tooltip title={`Percentil ${(cve.epss.percentile * 100).toFixed(0)} (largo de la barra)`}>
+            <Box>
+              <Typography sx={EPSS_VALUE_SX}>
+                {(cve.epss.score * 100).toFixed(cve.epss.score < 0.01 ? 2 : 1)}
+                {' '}
+                %
+              </Typography>
+              <Box sx={EPSS_TRACK_SX}>
+                <Box sx={epssBarSx} />
+              </Box>
+            </Box>
+          </Tooltip>
+        ) : (
+          <Typography sx={EPSS_VALUE_SX} color="text.secondary">—</Typography>
+        )}
+      </TableCell>
+      <TableCell align="right" sx={PUBLISHED_SX}>
+        <Tooltip title={cve.published ?? ''}>
+          <span>
+            {cve.published
+              ? formatDistanceToNowStrict(new Date(cve.published), { locale: es, addSuffix: true })
+              : '—'}
+          </span>
+        </Tooltip>
+      </TableCell>
+    </TableRow>
+  )
+})
+
 export const CveTable = memo(function CveTable({
   rows,
   onSelect,
+  selectedId,
+  loading = false,
   embedded = false,
 }: {
   rows: CveRecord[]
   onSelect: (c: CveRecord) => void
+  selectedId?: string
+  /** Primera carga del corpus: filas skeleton en lugar del estado vacío. */
+  loading?: boolean
   /** Sin borde propio cuando ya vive dentro de un Paper contenedor. */
   embedded?: boolean
 }) {
@@ -50,10 +235,11 @@ export const CveTable = memo(function CveTable({
   const [dir, setDir] = useState<'asc' | 'desc'>(config.defaults.sortDir)
   const [page, setPage] = useState(0)
   const [perPage, setPerPage] = useState(25)
-
-  useEffect(() => {
+  const [previousRows, setPreviousRows] = useState(rows)
+  if (rows !== previousRows) {
+    setPreviousRows(rows)
     setPage(0)
-  }, [rows])
+  }
 
   const techLabel = useMemo(
     () => Object.fromEntries(config.technologies.map((tech) => [tech.id, tech.label])),
@@ -70,7 +256,11 @@ export const CveTable = memo(function CveTable({
     return dir === 'desc' ? copy.reverse() : copy
   }, [rows, sort, dir])
 
-  const visible = sorted.slice(page * perPage, page * perPage + perPage)
+  const safePage = page === 0
+    ? 0
+    : Math.min(page, Math.max(0, Math.ceil(sorted.length / perPage) - 1))
+  const visible = sorted.slice(safePage * perPage, safePage * perPage + perPage)
+
   const head = (
     key: SortKey,
     label: string,
@@ -96,98 +286,53 @@ export const CveTable = memo(function CveTable({
 
   const body = (
     <>
-      <TableContainer sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+      <TableContainer sx={TABLE_CONTAINER_SX}>
         <Table stickyHeader size="small" aria-label="Lista de CVEs">
           <TableHead>
             <TableRow>
-              {head('risk', 'ID / Prioridad', 'left', 'Orden por prioridad NOC: explotada, EPSS, stack y severidad')}
-              {head('severity', 'Severidad', 'left', 'Nivel de severidad según CVSS (Critical, High, Medium, Low)')}
+              {head('risk', 'CVE', 'left', 'Orden por prioridad NOC: explotada, EPSS, stack y severidad')}
+              <TableCell>Vulnerabilidad</TableCell>
               {head('cvss', 'CVSS', 'right', 'Common Vulnerability Scoring System — impacto técnico de 0 a 10 (fuente NVD)')}
-              {head('epss', 'EPSS', 'right', 'Exploit Prediction Scoring System — probabilidad de explotación en los próximos 30 días (FIRST)')}
-              <TableCell>Descripción</TableCell>
-              <TableCell>Fuentes</TableCell>
-              {head('published', 'Publicado', 'left', 'Fecha de publicación del CVE')}
+              {head('epss', 'EPSS', 'left', 'Exploit Prediction Scoring System — probabilidad de explotación en los próximos 30 días (FIRST)')}
+              {head('published', 'Publicado', 'right', 'Fecha de publicación del CVE')}
             </TableRow>
           </TableHead>
           <TableBody>
-            {visible.map((c) => (
-              <TableRow
-                key={c.id}
-                hover
-                tabIndex={0}
-                role="button"
-                aria-label={`Abrir detalle de ${c.id}`}
-                onClick={() => onSelect(c)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    onSelect(c)
-                  }
-                }}
-                sx={{ cursor: 'pointer' }}
-              >
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                  <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                    {c.kev && (
-                      <Tooltip title={`En CISA KEV desde ${c.kev.dateAdded}${c.kev.ransomware ? ' · usado en ransomware' : ''}`}>
-                        <LocalFireDepartmentIcon fontSize="small" sx={{ color: c.kev.ransomware ? SEVERITY_COLOR.CRITICAL : KEV_COLOR }} aria-label="Explotada activamente" />
-                      </Tooltip>
-                    )}
-                    <Typography sx={{ fontFamily: MONO, fontSize: 13, fontWeight: 600 }}>{c.id}</Typography>
-                  </Stack>
-                </TableCell>
-                <TableCell><SeverityChip severity={c.severity} /></TableCell>
-                <TableCell align="right" sx={{ fontFamily: MONO }}>
-                  {c.cvss?.toFixed(1) ?? '—'}
-                  {c.cvssVersion && <Typography component="span" variant="caption" color="text.secondary"> v{c.cvssVersion.split('.')[0]}</Typography>}
-                </TableCell>
-                <TableCell align="right" sx={{ fontFamily: MONO }}>
-                  {c.epss ? (
-                    <Tooltip title={`Percentil ${(c.epss.percentile * 100).toFixed(0)}`}>
-                      <span>{(c.epss.score * 100).toFixed(c.epss.score < 0.01 ? 2 : 1)} %</span>
-                    </Tooltip>
-                  ) : '—'}
-                </TableCell>
-                <TableCell sx={{ maxWidth: 560 }}>
-                  {c.title && <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>{c.title}</Typography>}
-                  <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: c.title ? 1 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {c.description || 'Sin descripción'}
-                  </Typography>
-                  {(c.packages.length > 0 || c.technologies.length > 0 || c.matchedLibraries.length > 0) && (
-                    <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: 'wrap' }} useFlexGap>
-                      {c.matchedLibraries.slice(0, 3).map((library) => (
-                        <Chip key={library} size="small" color="warning" variant="outlined" label={library} />
-                      ))}
-                      {c.matchedLibraries.length > 3 && (
-                        <Chip size="small" color="warning" variant="outlined" label={`+${c.matchedLibraries.length - 3}`} />
-                      )}
-                      {c.technologies.slice(0, 4).map((techId) => (
-                        <Chip key={techId} size="small" color="secondary" variant="outlined" label={techLabel[techId] ?? techId} />
-                      ))}
-                      {c.packages.length > 0 && (
-                        <Typography variant="caption" sx={{ fontFamily: MONO, color: 'primary.light' }} noWrap>
-                          {c.packages.slice(0, 2).join('  ')}{c.packages.length > 2 ? `  +${c.packages.length - 2}` : ''}
-                        </Typography>
-                      )}
-                    </Stack>
-                  )}
+            {visible.map((cve) => (
+              <CveRow
+                key={cve.id}
+                cve={cve}
+                selected={cve.id === selectedId}
+                techLabel={techLabel}
+                onSelect={onSelect}
+              />
+            ))}
+            {loading && Array.from({ length: SKELETON_ROWS }, (_, index) => (
+              <TableRow key={`skeleton-${index}`} sx={SKELETON_ROW_SX}>
+                <TableCell sx={{ boxShadow: `inset 4px 0 0 ${BORDER}`, pl: 2 }}>
+                  <Skeleton width={120} height={18} />
+                  <Skeleton width={48} height={14} />
                 </TableCell>
                 <TableCell>
-                  <Stack direction="row" spacing={0.5}>
-                    {c.sources.map((s) => <Chip key={s} size="small" variant="outlined" label={SOURCE_SHORT[s] ?? s} />)}
+                  <Skeleton width={`${55 + ((index * 17) % 35)}%`} height={18} />
+                  <Stack direction="row" spacing={0.625} sx={{ mt: 0.625 }}>
+                    <Skeleton variant="rounded" width={56} height={16} />
+                    <Skeleton variant="rounded" width={40} height={16} />
+                    <Skeleton variant="rounded" width={28} height={16} />
                   </Stack>
                 </TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                  <Tooltip title={c.published ?? ''}>
-                    <span>{c.published ? formatDistanceToNowStrict(new Date(c.published), { locale: es, addSuffix: true }) : '—'}</span>
-                  </Tooltip>
+                <TableCell align="right"><Skeleton width={40} height={20} sx={{ ml: 'auto' }} /></TableCell>
+                <TableCell sx={EPSS_CELL_SX}>
+                  <Skeleton width={44} height={16} />
+                  <Skeleton variant="rounded" height={4} sx={{ mt: 0.5 }} />
                 </TableCell>
+                <TableCell align="right"><Skeleton width={72} height={16} sx={{ ml: 'auto' }} /></TableCell>
               </TableRow>
             ))}
-            {visible.length === 0 && (
+            {!loading && visible.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7}>
-                  <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}>
+                <TableCell colSpan={5}>
+                  <Box sx={EMPTY_CELL_SX}>
                     Sin CVEs con los filtros actuales. Amplía tecnologías o relaja severidad, fuentes o EPSS.
                   </Box>
                 </TableCell>
@@ -199,29 +344,24 @@ export const CveTable = memo(function CveTable({
       <TablePagination
         component="div"
         count={sorted.length}
-        page={Math.min(page, Math.max(0, Math.ceil(sorted.length / perPage) - 1))}
-        onPageChange={(_, p) => setPage(p)}
+        page={safePage}
+        onPageChange={(_, nextPage) => setPage(nextPage)}
         rowsPerPage={perPage}
-        onRowsPerPageChange={(e) => { setPerPage(Number(e.target.value)); setPage(0) }}
+        onRowsPerPageChange={(event) => {
+          setPerPage(Number(event.target.value))
+          setPage(0)
+        }}
         rowsPerPageOptions={[25, 50, 100]}
         labelRowsPerPage="Filas"
         labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
-        sx={{ flexShrink: 0, borderTop: 1, borderColor: 'divider' }}
+        sx={PAGINATION_SX}
       />
     </>
   )
 
   if (embedded) {
-    return (
-      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        {body}
-      </Box>
-    )
+    return <Box sx={ROOT_SX}>{body}</Box>
   }
 
-  return (
-    <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-      {body}
-    </Paper>
-  )
+  return <Paper sx={ROOT_SX}>{body}</Paper>
 })

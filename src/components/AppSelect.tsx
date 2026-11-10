@@ -1,12 +1,16 @@
-import { FormControl, InputLabel, MenuItem, OutlinedInput, Select, type SelectChangeEvent } from '@mui/material'
+import CloseIcon from '@mui/icons-material/Close'
+import {
+  FormControl, IconButton, InputLabel, MenuItem, OutlinedInput, Select, Tooltip, type SelectChangeEvent,
+} from '@mui/material'
 import { useMemo, useTransition } from 'react'
 import { useAppsConfig } from '../hooks/useAppsConfig'
 import { resolveAppStackCached } from '../lib/resolveAppStack'
 import { useFilters } from '../store/filters'
+import { ACCENT_SELECTED, ACCENT_SOFT, PRIMARY, TEXT_STRONG } from '../theme'
 
 const NONE = ''
 
-export function AppSelect({ minWidth = 260 }: { minWidth?: number }) {
+export function AppSelect({ width = 240 }: { width?: number }) {
   const { options } = useAppsConfig()
   const selectedAppId = useFilters((state) => state.selectedAppId)
   const setSelectedApp = useFilters((state) => state.setSelectedApp)
@@ -17,13 +21,17 @@ export function AppSelect({ minWidth = 260 }: { minWidth?: number }) {
   const menuOptions = useMemo(
     () => options.map((option) => {
       const resolved = resolveAppStackCached(option.id, option.entry)
+      // Magento/PHP/WP: activar tech primaria, no DBs auxiliares.
+      const filterTechIds = resolved.primaryTechIds.length > 0
+        ? resolved.primaryTechIds
+        : resolved.techIds
       return {
         id: option.id,
         label: option.label,
         entry: option.entry,
         libCount: resolved.libraries.length,
-        techCount: resolved.techIds.length,
-        techIds: resolved.techIds,
+        techCount: filterTechIds.length,
+        techIds: filterTechIds,
       }
     }),
     [options],
@@ -36,14 +44,23 @@ export function AppSelect({ minWidth = 260 }: { minWidth?: number }) {
 
   if (menuOptions.length === 0) return null
 
+  const active = Boolean(selectedAppId && byId[selectedAppId])
+  const selectedLabel = selectedAppId ? byId[selectedAppId]?.label : undefined
+
+  const clear = () => {
+    startTransition(() => {
+      setSelectedApp(null)
+      setTechAll(true)
+    })
+  }
+
   const onChange = (event: SelectChangeEvent<string>) => {
     const nextId = event.target.value
+    if (!nextId) {
+      clear()
+      return
+    }
     startTransition(() => {
-      if (!nextId) {
-        setSelectedApp(null)
-        setTechAll(true)
-        return
-      }
       const option = byId[nextId]
       if (!option) return
       setSelectedApp(nextId)
@@ -53,29 +70,86 @@ export function AppSelect({ minWidth = 260 }: { minWidth?: number }) {
   }
 
   return (
-    <FormControl size="small" sx={{ minWidth, opacity: isPending ? 0.72 : 1, transition: 'opacity 120ms ease' }}>
-      <InputLabel id="app-select-label">Aplicación</InputLabel>
-      <Select
-        labelId="app-select-label"
-        value={selectedAppId ?? NONE}
-        onChange={onChange}
-        input={<OutlinedInput label="Aplicación" />}
-        MenuProps={{ slotProps: { paper: { sx: { maxHeight: 440 } } } }}
+    <Tooltip title={active && selectedLabel ? selectedLabel : ''} disableHoverListener={!active}>
+      <FormControl
+        size="small"
+        sx={{
+          width,
+          flexShrink: 0,
+          opacity: isPending ? 0.72 : 1,
+          transition: 'opacity 120ms ease',
+          ...(active && {
+            '& .MuiInputLabel-root': { color: 'primary.main', fontWeight: 600 },
+            '& .MuiOutlinedInput-root': { bgcolor: ACCENT_SOFT },
+            '& .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main', borderWidth: 2 },
+            '& .MuiSelect-select': { fontWeight: 700, color: TEXT_STRONG },
+          }),
+          '& .MuiSelect-select': {
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            pr: active ? 4.5 : undefined,
+          },
+        }}
       >
-        <MenuItem value={NONE}>
-          <em>Todas las apps</em>
-        </MenuItem>
-        {menuOptions.map((option) => (
-          <MenuItem key={option.id} value={option.id}>
-            {option.label}
-            {option.libCount > 0
-              ? ` · ${option.libCount} libs`
-              : option.techCount > 0
-                ? ` · ${option.techCount} tech`
-                : ''}
+        <InputLabel id="app-select-label">Aplicación</InputLabel>
+        <Select
+          labelId="app-select-label"
+          value={selectedAppId ?? NONE}
+          onChange={onChange}
+          renderValue={() => selectedLabel ?? 'Todas las apps'}
+          input={(
+            <OutlinedInput
+              label="Aplicación"
+              endAdornment={active ? (
+                <Tooltip title="Quitar aplicación">
+                  <IconButton
+                    size="small"
+                    aria-label="Quitar aplicación seleccionada"
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      clear()
+                    }}
+                    sx={{ mr: 2, p: 0.25 }}
+                  >
+                    <CloseIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              ) : undefined}
+            />
+          )}
+          MenuProps={{
+            slotProps: {
+              paper: {
+                sx: {
+                  maxHeight: 440,
+                  minWidth: width,
+                  '& .MuiMenuItem-root.Mui-selected': {
+                    bgcolor: ACCENT_SELECTED,
+                    boxShadow: `inset 3px 0 0 ${PRIMARY}`,
+                    fontWeight: 700,
+                  },
+                },
+              },
+            },
+          }}
+        >
+          <MenuItem value={NONE}>
+            <em>Todas las apps</em>
           </MenuItem>
-        ))}
-      </Select>
-    </FormControl>
+          {menuOptions.map((option) => (
+            <MenuItem key={option.id} value={option.id}>
+              {option.label}
+              {option.libCount > 0
+                ? ` · ${option.libCount} libs`
+                : option.techCount > 0
+                  ? ` · ${option.techCount} tech`
+                  : ''}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    </Tooltip>
   )
 }

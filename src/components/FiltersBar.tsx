@@ -1,51 +1,50 @@
-import SearchIcon from '@mui/icons-material/Search'
 import {
-  Chip, FormControlLabel, InputAdornment, MenuItem, Paper, Stack, Switch, TextField,
-  ToggleButton, ToggleButtonGroup, Tooltip, Typography,
+  Box, ButtonBase, Checkbox, FormControl, FormControlLabel, InputLabel, ListItemText, MenuItem,
+  OutlinedInput, Select, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
 import { useSourcesConfig } from '../hooks/useSourcesConfig'
 import { useFilters, type WindowDays } from '../store/filters'
-import { SEVERITY_COLOR, SEVERITY_INK, SEVERITY_LABEL } from '../theme'
+import {
+  BORDER, BORDER_STRONG, SEGMENT_SELECTED, SEVERITY_COLOR, SEVERITY_LABEL, SURFACE, SURFACE_SUNKEN, TEXT_STRONG,
+} from '../theme'
 import { SEVERITIES, SOURCES, isSourceId, type SourceId } from '../types'
-import { SEVERITY_ICON } from './SeverityChip'
+import { TechnologySelect } from './TechnologySelect'
 
 const WINDOWS: WindowDays[] = [1, 7, 15, 30, 90]
 
-const SOURCE_SHORT: Partial<Record<SourceId, string>> = {
-  nvd: 'NVD',
-  kev: 'KEV',
-  github: 'GH',
-  cveorg: 'CVE',
-  osv: 'OSV',
-  euvd: 'EUVD',
-  'vulncheck-kev': 'VC',
-  wordfence: 'WF',
-}
-
 function windowLabel(days: WindowDays): string {
   if (days === 1) return '24 h'
-  if (days === 90) return '3 meses'
+  if (days === 90) return '3 m'
   return `${days} d`
+}
+
+function Separator() {
+  return <Box aria-hidden sx={{ width: '1px', height: 28, bgcolor: BORDER_STRONG, display: { xs: 'none', md: 'block' } }} />
 }
 
 export function FiltersBar() {
   const f = useFilters()
   const { config } = useSourcesConfig()
-  const [q, setQ] = useState(f.search)
-
-  useEffect(() => {
-    const t = setTimeout(() => f.setSearch(q), 200)
-    return () => clearTimeout(t)
-  }, [q]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filterSources = config.sources.filter(
     (source) => source.role !== 'score' && isSourceId(source.id) && source.enabled,
   )
+  const sourceOptions = (filterSources.length > 0 ? filterSources : SOURCES.map((id) => ({ id, label: id })))
+    .map((source) => ({ id: source.id as SourceId, label: source.label }))
+  const activeSources = f.sources.filter((id) => sourceOptions.some((option) => option.id === id))
 
   return (
-    <Paper sx={{ p: 1, flexShrink: 0 }}>
-      <Stack direction="row" spacing={1.5} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+    <Box
+      component="section"
+      aria-label="Filtros"
+      sx={{
+        p: 1.25,
+        bgcolor: SURFACE_SUNKEN,
+        border: `1px solid ${BORDER}`,
+        borderRadius: '12px',
+      }}
+    >
+      <Stack direction="row" spacing={1.25} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
         <Tooltip
           title={
             f.selectedAppId
@@ -59,59 +58,91 @@ export function FiltersBar() {
             value={f.days}
             onChange={(_, v) => v && f.setDays(v)}
             aria-label="Ventana de tiempo"
+            sx={{
+              bgcolor: SURFACE,
+              border: `1px solid ${BORDER_STRONG}`,
+              borderRadius: '9px',
+              p: '3px',
+              '& .MuiToggleButton-root': {
+                border: 0,
+                borderRadius: '7px !important',
+                px: 1.5,
+                py: 0.5,
+                fontWeight: 600,
+                fontSize: 13,
+                textTransform: 'none',
+                color: 'text.secondary',
+              },
+              '& .Mui-selected': { bgcolor: `${SEGMENT_SELECTED} !important`, color: `${TEXT_STRONG} !important` },
+            }}
           >
             {WINDOWS.map((d) => (
-              <ToggleButton key={d} value={d} sx={{ px: 1.5 }}>{windowLabel(d)}</ToggleButton>
+              <ToggleButton key={d} value={d}>{windowLabel(d)}</ToggleButton>
             ))}
           </ToggleButtonGroup>
         </Tooltip>
 
-        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+        <Separator />
+
+        <Stack direction="row" spacing={0.75} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
           {SEVERITIES.map((s) => {
-            const Icon = SEVERITY_ICON[s]
             const on = f.severities.includes(s)
             const tone = SEVERITY_COLOR[s]
-            const ink = SEVERITY_INK[s]
             return (
-              <Chip
+              <ButtonBase
                 key={s}
-                size="small"
-                icon={<Icon sx={{ color: `${on ? ink : tone} !important` }} />}
-                label={SEVERITY_LABEL[s]}
-                variant={on ? 'filled' : 'outlined'}
                 onClick={() => f.toggleSeverity(s)}
                 aria-pressed={on}
-                sx={on
-                  ? { bgcolor: tone, color: ink, borderColor: tone, '&:hover': { bgcolor: tone, filter: 'brightness(1.08)' } }
-                  : { color: tone, borderColor: tone, '&:hover': { bgcolor: `${tone}22` } }}
-              />
+                sx={{
+                  height: 32,
+                  px: 1.5,
+                  gap: 0.875,
+                  borderRadius: 999,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  border: '1px solid',
+                  borderColor: on ? tone : BORDER_STRONG,
+                  bgcolor: on ? `${tone}1f` : SURFACE,
+                  color: on ? 'text.primary' : 'text.secondary',
+                  opacity: on ? 1 : 0.7,
+                  '&:hover': { borderColor: tone, opacity: 1 },
+                }}
+              >
+                <Box component="span" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tone }} />
+                {SEVERITY_LABEL[s]}
+              </ButtonBase>
             )
           })}
         </Stack>
 
-        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-          {(filterSources.length > 0 ? filterSources : SOURCES.map((id) => ({ id, label: id }))).map((source) => {
-            const id = source.id as SourceId
-            const on = f.sources.includes(id)
-            const short = SOURCE_SHORT[id] ?? source.label
-            return (
-              <Tooltip key={id} title={source.label}>
-                <Chip
-                  size="small"
-                  label={short}
-                  color={on ? 'primary' : 'default'}
-                  variant={on ? 'filled' : 'outlined'}
-                  onClick={() => f.toggleSource(id)}
-                />
-              </Tooltip>
-            )
-          })}
-        </Stack>
+        <Separator />
 
-        <FormControlLabel
-          control={<Switch size="small" checked={f.kevOnly} onChange={(e) => f.setKevOnly(e.target.checked)} />}
-          label={<Typography variant="body2">Solo explotadas</Typography>}
-        />
+        <TechnologySelect minWidth={180} />
+
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel id="sources-select-label">Fuentes</InputLabel>
+          <Select
+            labelId="sources-select-label"
+            multiple
+            value={activeSources}
+            onChange={(event) => {
+              const next = (typeof event.target.value === 'string' ? event.target.value.split(',') : event.target.value)
+                .filter(isSourceId)
+              for (const option of sourceOptions) {
+                if (next.includes(option.id) !== f.sources.includes(option.id)) f.toggleSource(option.id)
+              }
+            }}
+            input={<OutlinedInput label="Fuentes" />}
+            renderValue={(selected) => (selected.length === sourceOptions.length ? `Todas (${selected.length})` : `${selected.length}`)}
+          >
+            {sourceOptions.map((option) => (
+              <MenuItem key={option.id} value={option.id} dense>
+                <Checkbox size="small" checked={f.sources.includes(option.id)} />
+                <ListItemText primary={option.label} />
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
         <TextField
           select size="small" label="EPSS mín." value={f.minEpss}
@@ -122,24 +153,12 @@ export function FiltersBar() {
           ))}
         </TextField>
 
-        <TextField
-          select size="small" label="Actualización" value={f.refreshMin}
-          onChange={(e) => f.setRefreshMin(Number(e.target.value))} sx={{ width: 120 }}
-        >
-          {[0, 5, 15, 30, 60].map((v) => (
-            <MenuItem key={v} value={v}>{v === 0 ? 'Manual' : `${v} min`}</MenuItem>
-          ))}
-        </TextField>
-
-        <TextField
-          size="small"
-          placeholder="CVE, GHSA, paquete, vendor, tech…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          sx={{ flex: 1, minWidth: 220 }}
-          slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
+        <FormControlLabel
+          sx={{ ml: { md: 'auto' }, mr: 0.5 }}
+          control={<Switch size="small" checked={f.kevOnly} onChange={(e) => f.setKevOnly(e.target.checked)} />}
+          label={<Typography variant="body2">Solo explotadas</Typography>}
         />
       </Stack>
-    </Paper>
+    </Box>
   )
 }

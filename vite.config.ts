@@ -114,7 +114,11 @@ export default defineConfig(({ mode }) => {
   const host = env.VITE_DEV_HOST || process.env.VITE_DEV_HOST || '0.0.0.0'
 
   return {
-    plugins: [react(), authDevPlugin(), corpusDevPlugin()],
+    plugins: [
+      react({ compiler: true }),
+      authDevPlugin(),
+      corpusDevPlugin(),
+    ],
     server: { host, proxy, port: 5173 },
     preview: { host, proxy },
   }

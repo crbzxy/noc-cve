@@ -1,18 +1,75 @@
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CloudOffIcon from '@mui/icons-material/CloudOff'
 import ErrorIcon from '@mui/icons-material/Error'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import MenuOpenIcon from '@mui/icons-material/MenuOpen'
 import RefreshIcon from '@mui/icons-material/Refresh'
-import { Box, CircularProgress, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material'
+import { Box, ButtonBase, CircularProgress, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { SourceHealth } from '../hooks/useCves'
+import { BORDER_STRONG, SOURCE_OFF, SURFACE } from '../theme'
 
 const STATUS = {
   ok: { icon: <CheckCircleIcon color="success" fontSize="small" />, text: 'En línea' },
   error: { icon: <ErrorIcon color="error" fontSize="small" />, text: 'Error' },
   loading: { icon: <CircularProgress size={16} />, text: 'Consultando…' },
   off: { icon: <CloudOffIcon sx={{ color: 'text.disabled' }} fontSize="small" />, text: 'Off' },
+}
+
+const PILL_COLOR: Record<SourceHealth['status'], string> = {
+  ok: '#22c55e',
+  loading: '#f5a524',
+  error: '#f05252',
+  off: SOURCE_OFF,
+}
+
+/** Resumen compacto del header: una barra por fuente; abre/cierra el panel lateral. */
+export function SourceHealthPill({
+  health,
+  open,
+  onToggle,
+}: {
+  health: SourceHealth[]
+  open: boolean
+  onToggle: () => void
+}) {
+  const online = health.filter((h) => h.status === 'ok').length
+  const failing = health.filter((h) => h.status === 'error')
+  const tooltip = failing.length > 0
+    ? `Con error: ${failing.map((h) => h.label).join(', ')}`
+    : 'Estado de las fuentes'
+
+  return (
+    <Tooltip title={tooltip}>
+      <ButtonBase
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-label={`Fuentes: ${online} de ${health.length} en línea. ${open ? 'Cerrar' : 'Abrir'} panel`}
+        sx={{
+          height: 38,
+          px: 1.5,
+          gap: 1,
+          borderRadius: '10px',
+          border: 1,
+          borderColor: failing.length > 0 && !open ? 'error.main' : BORDER_STRONG,
+          bgcolor: open ? 'action.selected' : SURFACE,
+          fontSize: 13,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <Stack direction="row" spacing="3px" aria-hidden>
+          {health.map((h) => (
+            <Box key={h.id} sx={{ width: 6, height: 14, borderRadius: '2px', bgcolor: PILL_COLOR[h.status] }} />
+          ))}
+        </Stack>
+        <span>
+          Fuentes <strong>{online}/{health.length}</strong> en línea
+        </span>
+        <ExpandMoreIcon sx={{ fontSize: 16, color: 'text.secondary', transform: open ? 'rotate(180deg)' : 'none' }} />
+      </ButtonBase>
+    </Tooltip>
+  )
 }
 
 export function SourceStatus({
