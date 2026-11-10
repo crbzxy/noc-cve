@@ -77,7 +77,7 @@ export default function App() {
   const { options: appOptions } = useAppsConfig()
   const {
     records, packageHits, appLibraries, libraryRiskLoading, health, isFetching, refetchAll,
-    corpusGeneratedAt, newCriticalIds, initialLoading,
+    corpusGeneratedAt, initialLoading,
   } = useCves()
   // Diferir el recálculo pesado mantiene la UI responsiva al cambiar de app.
   const deferredRecords = useDeferredValue(records)
@@ -166,16 +166,6 @@ export default function App() {
             open={sidebarOpen}
             onToggle={() => setSidebarOpen((open) => !open)}
           />
-          {newCriticalIds.length > 0 && (
-            <Tooltip title={newCriticalIds.slice(0, 12).join(', ') + (newCriticalIds.length > 12 ? '…' : '')}>
-              <Chip
-                size="small"
-                color="error"
-                label={`+${newCriticalIds.length} CRITICAL`}
-                sx={{ fontWeight: 700 }}
-              />
-            </Tooltip>
-          )}
           {corpusGeneratedAt != null && (
             <Tooltip title={`Corpus ingerido ${new Date(corpusGeneratedAt).toLocaleString('es-MX')}`}>
               <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 170 }}>
@@ -295,7 +285,7 @@ export default function App() {
           </Box>
 
           <Box sx={{ flexShrink: 0 }}>
-            <FiltersBar />
+            <FiltersBar kevUnavailable={kevUnavailable} />
           </Box>
 
           {!selectedAppId && (

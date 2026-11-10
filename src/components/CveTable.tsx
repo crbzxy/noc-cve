@@ -8,6 +8,7 @@ import { es } from 'date-fns/locale'
 import { memo, useMemo, useState } from 'react'
 import { useSourcesConfig } from '../hooks/useSourcesConfig'
 import { riskScore } from '../lib/aggregate'
+import { useFilters } from '../store/filters'
 import {
   BORDER, BORDER_STRONG, KEV_COLOR, MONO, PACKAGE_TEXT, PRIMARY, ROW_SELECTED, SEVERITY_COLOR, SEVERITY_LABEL,
   SEVERITY_TEXT, TAG_BG,
@@ -231,6 +232,7 @@ export const CveTable = memo(function CveTable({
   embedded?: boolean
 }) {
   const { config } = useSourcesConfig()
+  const kevOnly = useFilters((state) => state.kevOnly)
   const [sort, setSort] = useState<SortKey>(config.defaults.sortBy)
   const [dir, setDir] = useState<'asc' | 'desc'>(config.defaults.sortDir)
   const [page, setPage] = useState(0)
@@ -333,7 +335,9 @@ export const CveTable = memo(function CveTable({
               <TableRow>
                 <TableCell colSpan={5}>
                   <Box sx={EMPTY_CELL_SX}>
-                    Sin CVEs con los filtros actuales. Amplía tecnologías o relaja severidad, fuentes o EPSS.
+                    {kevOnly
+                      ? 'Ninguna CVE explotada (KEV) en estos filtros. Si el KPI KEV dice «Fuente no disponible», apaga «Solo explotadas» o recarga Fuentes.'
+                      : 'Sin CVEs con los filtros actuales. Amplía tecnologías o relaja severidad, fuentes o EPSS.'}
                   </Box>
                 </TableCell>
               </TableRow>

@@ -22,7 +22,7 @@ function Separator() {
   return <Box aria-hidden sx={{ width: '1px', height: 28, bgcolor: BORDER_STRONG, display: { xs: 'none', md: 'block' } }} />
 }
 
-export function FiltersBar() {
+export function FiltersBar({ kevUnavailable = false }: { kevUnavailable?: boolean }) {
   const f = useFilters()
   const { config } = useSourcesConfig()
 
@@ -153,11 +153,30 @@ export function FiltersBar() {
           ))}
         </TextField>
 
-        <FormControlLabel
-          sx={{ ml: { md: 'auto' }, mr: 0.5 }}
-          control={<Switch size="small" checked={f.kevOnly} onChange={(e) => f.setKevOnly(e.target.checked)} />}
-          label={<Typography variant="body2">Solo explotadas</Typography>}
-        />
+        <Tooltip
+          title={
+            kevUnavailable
+              ? 'La fuente KEV no respondió: este filtro no puede marcar explotadas. Revisa Fuentes (sidebar) y recarga el corpus.'
+              : 'Solo CVE en CISA/VulnCheck KEV (explotación conocida en el mundo real). Si la fuente KEV está caída, la lista queda vacía.'
+          }
+        >
+          <FormControlLabel
+            sx={{ ml: { md: 'auto' }, mr: 0.5 }}
+            control={(
+              <Switch
+                size="small"
+                color={kevUnavailable && f.kevOnly ? 'warning' : 'primary'}
+                checked={f.kevOnly}
+                onChange={(e) => f.setKevOnly(e.target.checked)}
+              />
+            )}
+            label={(
+              <Typography variant="body2" color={kevUnavailable && f.kevOnly ? 'warning.main' : undefined}>
+                Solo explotadas{kevUnavailable && f.kevOnly ? ' (KEV caído)' : ''}
+              </Typography>
+            )}
+          />
+        </Tooltip>
       </Stack>
     </Box>
   )
