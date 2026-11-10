@@ -106,10 +106,22 @@ async function proxy(req, res, prefix, up) {
       const detail = responseBody.length
         ? responseBody.toString('utf8').slice(0, 500)
         : `Upstream respondió ${r.status} sin cuerpo (¿firewall hacia ${up.target}?)`
+      const authHint = r.status === 401 || r.status === 403
+        ? (
+          up.target.includes('vulncheck') ? 'Agrega VULNCHECK_TOKEN en .env.'
+            : up.target.includes('wordfence') ? 'Agrega WORDFENCE_API_KEY en .env.'
+              : up.target.includes('cve.org')
+                ? 'CVE.org no usa API key: pide a Seguridad liberar/excluir www.cve.org (Web Filter / SSL Inspection).'
+                : up.target.includes('github.com') ? 'Agrega GITHUB_TOKEN en .env si es rate limit.'
+                  : up.target.includes('nvd.nist') ? 'Revisa NVD_API_KEY o rate limit.'
+                    : 'Revisa credenciales .env o pide a Seguridad liberar el host.'
+        )
+        : undefined
       const err = jsonError(502, {
         error: `No se pudo consultar ${up.target}${up.path}`,
         status: r.status,
         detail,
+        hint: authHint,
         upstream: url.split('?')[0],
       })
       res.writeHead(err.status, err.headers).end(err.body)
@@ -123,11 +135,14 @@ async function proxy(req, res, prefix, up) {
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     const aborted = controller.signal.aborted
+    const tlsIssue = /self-signed|certificate|UNABLE_TO_VERIFY|CERT_UNTRUSTED/i.test(message)
     const err = jsonError(502, {
       error: aborted
         ? `Timeout (${UPSTREAM_TIMEOUT_MS} ms) al consultar ${up.target}`
         : `Fallo de red hacia ${up.target}: ${message}`,
-      hint: `Verifica salida HTTPS desde el servidor QA hacia ${up.target} (firewall / proxy corporativo).`,
+      hint: tlsIssue
+        ? `Pide a Seguridad excluir ${up.target} de SSL Inspection o instalar el CA corporativo en el server (trust store del SO).`
+        : `Verifica salida HTTPS hacia ${up.target} (firewall / Web Filter).`,
       upstream: `${up.target}${up.path}`,
     })
     res.writeHead(err.status, err.headers).end(err.body)

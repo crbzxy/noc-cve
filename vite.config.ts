@@ -19,10 +19,13 @@ function writeProxyError(
 ) {
   if (!res || res.headersSent || typeof res.writeHead !== 'function') return
   const detail = err instanceof Error ? err.message : String(err)
+  const tlsIssue = /self-signed|certificate|UNABLE_TO_VERIFY|CERT_UNTRUSTED/i.test(detail)
   const payload = JSON.stringify({
     error: `Fallo de red hacia ${target}`,
     detail,
-    hint: `Verifica salida HTTPS desde este host hacia ${target} (firewall / proxy corporativo).`,
+    hint: tlsIssue
+      ? `Pide a Seguridad excluir ${target} de SSL Inspection o confiar el CA en el trust store del SO.`
+      : `Verifica salida HTTPS hacia ${target} (firewall / Web Filter).`,
     upstream: `${target}${path}`,
   })
   res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -58,7 +61,6 @@ function corpusDevPlugin(): Plugin {
   return {
     name: 'noc-cve-corpus',
     configureServer(devServer) {
-      // Ingesta directa a upstreams (sin loopback al propio Vite).
       void importServerModule<{
         startCorpusWorker: (options: {
           startTimer?: boolean
@@ -83,21 +85,14 @@ function corpusDevPlugin(): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
-  // Carga .env sin prefijo VITE_ (solo disponible en Node, no en el cliente)
   const env = loadEnv(mode, process.cwd(), '')
-
-  // QA corporativo suele interceptar HTTPS con CA interna (self-signed in chain).
-  const insecureTls = (env.UPSTREAM_TLS_INSECURE || process.env.UPSTREAM_TLS_INSECURE) === '1'
-  if (insecureTls) {
-    console.warn('[proxy] UPSTREAM_TLS_INSECURE=1 — no se valida el certificado TLS de upstreams')
-  }
 
   const proxy: Record<string, ProxyOptions> = {}
   for (const [prefix, up] of Object.entries(upstreams)) {
     proxy[prefix] = {
       target: up.target,
       changeOrigin: true,
-      secure: !insecureTls,
+      secure: true,
       timeout: 30_000,
       proxyTimeout: 30_000,
       headers: up.headers(env),
@@ -110,7 +105,6 @@ export default defineConfig(({ mode }) => {
     }
   }
 
-  // En Docker/QA usar 0.0.0.0 (VITE_DEV_HOST); en local también sirve para LAN.
   const host = env.VITE_DEV_HOST || process.env.VITE_DEV_HOST || '0.0.0.0'
 
   return {

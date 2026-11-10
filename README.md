@@ -141,7 +141,7 @@ Las tecnologías **no tienen API propia**: se etiquetan por keywords sobre el co
 |---|---|---|---|---|---|
 | **NVD (NIST)** API 2.0 | list | `https://services.nvd.nist.gov` | `/rest/json/cves/2.0` | CVSS enriquecido, CWE, estado de análisis | `NVD_API_KEY` (opcional) |
 | **GitHub Advisories** | list | `https://api.github.com` | `/advisories` | Paquetes por ecosistema y GHSA sin CVE | `GITHUB_TOKEN` (opcional) |
-| **CVE.org** Search API | list | `https://www.cve.org` | `/restapiv1/search` | Fuente canónica del programa CVE (respaldo si NVD se atrasa) | — |
+| **CVE.org** Search API | list | `https://www.cve.org` | `POST /restapiv1/search` | Fuente canónica del programa CVE (respaldo si NVD se atrasa) | — |
 | **Wordfence Intelligence** | list | `https://www.wordfence.com` | `/api/intelligence/v3/vulnerabilities/production` | Plugins/temas WordPress poco cubiertos en NVD | `WORDFENCE_API_KEY` |
 | **OSV.dev** | match | `https://api.osv.dev` | `/v1` | Cruce por *paquete + versión* (npm, Packagist, Maven…) | — |
 | **ENISA EUVD** | enrich | `https://euvdservices.enisa.europa.eu` | `/api/search` | Respaldo UE ante inestabilidad NVD/CVE | — |
@@ -150,6 +150,8 @@ Las tecnologías **no tienen API propia**: se etiquetan por keywords sobre el co
 | **FIRST EPSS** | score | `https://api.first.org` | `/data/v1/epss` | Probabilidad de explotación a 30 días | — |
 
 **Whitelist FortiGuard / firewall** (hosts a liberar): `services.nvd.nist.gov`, `api.github.com`, `www.cve.org`, `www.wordfence.com`, `api.osv.dev`, `euvdservices.enisa.europa.eu`, `www.cisa.gov`, `api.vulncheck.com`, `api.first.org`.
+
+**SSL Inspection:** si curl/Node reportan `self-signed certificate in certificate chain`, Seguridad debe excluir esos hosts de inspección o instalar el CA en el trust store del SO. El dashboard no desactiva la verificación TLS.
 
 **Prioridad (orden por defecto):** KEV > ransomware > EPSS > match de stack > severidad > CVSS.  
 **Fusión:** CVE.org pisa a NVD en CVSS/descripción; CISA KEV pisa a VulnCheck en el flag `kev`.

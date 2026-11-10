@@ -1,8 +1,8 @@
-import { daysAgo, getJson, normalizeSeverity } from '../lib/http'
+import { daysAgo, normalizeSeverity, postJson } from '../lib/http'
 import type { PartialCve } from '../types'
 
-// CVE.org Search API (beta) — https://www.cve.org/restapiv1/search
-// Listado público; el detalle canónico 5.1 también vive en cveawg.mitre.org/api/cve/{id}.
+// CVE.org Search API (beta) — POST https://www.cve.org/restapiv1/search
+// Body: { query, from, size, sort }. Sin API key en beta.
 
 interface CveMetric {
   cvssV4_0?: { baseScore?: number; baseSeverity?: string; version?: string }
@@ -36,12 +36,16 @@ interface CveRecord51 {
 interface SearchResponse {
   results?: CveRecord51[]
   resultsTotal?: number
+  total?: number
+  size?: number
+  from?: number
   resultsPerPage?: number
   pageNumber?: number
 }
 
 const PAGE_SIZE = 100
 const MAX_PAGES = 20
+const MAX_WINDOW = 10_000
 
 function pickMetric(container?: CveContainer): { score?: number; sev?: string; version?: string } {
   const metrics = container?.metrics ?? []
@@ -106,24 +110,38 @@ function inWindow(published: string | undefined, sinceIso: string): boolean {
   return published >= sinceIso
 }
 
+function totalFrom(data: SearchResponse): number {
+  return data.resultsTotal ?? data.total ?? 0
+}
+
+async function searchPage(
+  query: string,
+  from: number,
+  signal?: AbortSignal,
+): Promise<SearchResponse> {
+  const { data } = await postJson<SearchResponse>('/api/cveorg', {
+    query,
+    from,
+    size: PAGE_SIZE,
+    sort: { property: 'cveId', order: 'desc' },
+  }, signal)
+  return data
+}
+
 export async function fetchCveOrg(days: number, signal?: AbortSignal): Promise<PartialCve[]> {
   const sinceIso = daysAgo(days).toISOString()
   const out = new Map<string, PartialCve>()
   for (const query of yearQueries(days)) {
-    for (let page = 1; page <= MAX_PAGES; page += 1) {
-      const params = new URLSearchParams({
-        query,
-        resultsPerPage: String(PAGE_SIZE),
-        pageNumber: String(page),
-      })
-      const { data } = await getJson<SearchResponse>(`/api/cveorg?${params}`, signal)
+    for (let page = 0; page < MAX_PAGES; page += 1) {
+      const from = page * PAGE_SIZE
+      const data = await searchPage(query, from, signal)
       const rows = (data.results ?? []).map(mapRecord).filter((row): row is PartialCve => Boolean(row))
       for (const row of rows) {
         if (!inWindow(row.published, sinceIso) && !inWindow(row.modified, sinceIso)) continue
         out.set(row.id, row)
       }
-      const total = data.resultsTotal ?? 0
-      if (page * PAGE_SIZE >= Math.min(total, 10_000) || rows.length === 0) break
+      const total = totalFrom(data)
+      if (rows.length === 0 || from + PAGE_SIZE >= Math.min(total, MAX_WINDOW)) break
     }
   }
   return [...out.values()]
