@@ -7,8 +7,7 @@ import { aggregate, riskScore } from '../lib/aggregate'
 import {
   CORPUS_REFRESH_MS,
   CORPUS_WINDOW_DAYS,
-  filterByWindow,
-  filterInventoryByWindow,
+  isInTimeWindow,
 } from '../lib/corpusWindow'
 import { applyLibraryMatches } from '../lib/matchLibraries'
 import { applyTechnologyTags } from '../lib/matchTechnologies'
@@ -247,13 +246,13 @@ export function useCves() {
     [sourceFiltered],
   )
 
-  // App = inventario por versión (sin recorte por fecha). Sin app = feed de noticias por days.
+  // App = inventario por versión. Sin app = feed de noticias.
+  // La ventana de días se aplica al filtrar la vista; si queda vacía se amplía a 90 d.
   const inventoryMode = Boolean(selectedAppId && (appStack?.libraries.length ?? 0) > 0)
 
   const matchCorpus = useMemo(() => {
-    const base = inventoryMode ? withoutWordfence : sourceFiltered
-    return inventoryMode ? base : filterByWindow(base, days)
-  }, [inventoryMode, withoutWordfence, sourceFiltered, days])
+    return inventoryMode ? withoutWordfence : sourceFiltered
+  }, [inventoryMode, withoutWordfence, sourceFiltered])
 
   const knownIds = useMemo(() => {
     const ids = new Set<string>()
@@ -300,16 +299,12 @@ export function useCves() {
   })
 
   const records: CveRecord[] = useMemo(() => {
-    const enriched = !epss.data
-      ? withLibraries
-      : withLibraries.map((c) => {
-        const score = epss.data.get(c.id)
-        return score ? { ...c, epss: score } : c
-      })
-    // Con app: puedes cambiar 24h/7d/…; CRITICAL/HIGH de libs no se ocultan por antigüedad.
-    if (inventoryMode) return filterInventoryByWindow(enriched, days)
-    return enriched
-  }, [withLibraries, epss.data, inventoryMode, days])
+    if (!epss.data) return withLibraries
+    return withLibraries.map((c) => {
+      const score = epss.data.get(c.id)
+      return score ? { ...c, epss: score } : c
+    })
+  }, [withLibraries, epss.data])
 
   const nvdMeta = findSource(config, 'nvd')
   const ghMeta = findSource(config, 'github')
@@ -410,77 +405,93 @@ function buildSearchHaystack(record: CveRecord): string {
   ].join('\n')
 }
 
-function filterCveRecords(
-  records: CveRecord[],
-  options: {
-    severities: Set<string>
-    sources: Set<string>
-    kevOnly: boolean
-    techAll: boolean
-    technologies: string[]
-    minEpss: number
-    search: string
-    appStack: ResolvedAppStack | null
-    selectedLibrary: string | null
-    ignoreLibraryFilter?: boolean
-  },
-): CveRecord[] {
-  const q = options.search.trim().toLowerCase()
-  const searchPattern = q ? compileSearchPattern(q) : null
+type FilterCveOptions = {
+  severities: Set<string>
+  sources: Set<string>
+  kevOnly: boolean
+  techAll: boolean
+  technologies: string[]
+  minEpss: number
+  search: string
+  days: number
+  inventoryMode: boolean
+  appStack: ResolvedAppStack | null
+  selectedLibrary: string | null
+  ignoreLibraryFilter?: boolean
+}
+
+function passesTimeWindow(record: CveRecord, days: number, inventoryMode: boolean): boolean {
+  if (days >= CORPUS_WINDOW_DAYS) return true
+  if (isInTimeWindow(record, days)) return true
+  if (!inventoryMode || record.matchedLibraries.length === 0) return false
+  return record.severity === 'CRITICAL' || record.severity === 'HIGH'
+}
+
+function passesSearch(record: CveRecord, query: string, pattern: RegExp | null): boolean {
+  if (!pattern) return true
+  if (record.id.toLowerCase().includes(query)) return true
+  if (record.aliases.some((alias) => alias.toLowerCase().includes(query))) return true
+  return textMatchesSearch(buildSearchHaystack(record), pattern)
+}
+
+function passesStackFilters(record: CveRecord, options: FilterCveOptions): boolean {
   const appTechSet = options.appStack ? new Set(options.appStack.techIds) : null
-  const appScopeTechSet = options.appStack
-    ? new Set(options.appStack.scopeTechIds)
-    : null
+  const appScopeTechSet = options.appStack ? new Set(options.appStack.scopeTechIds) : null
   const techFallback = Boolean(options.appStack && appStackUsesTechFallback(options.appStack))
   const techSet = !appTechSet && !options.techAll && options.technologies.length > 0
     ? new Set(options.technologies)
     : null
   const techNone = !appTechSet && !options.techAll && options.technologies.length === 0
+  if (techNone) return false
+
   const libraryFilter = options.ignoreLibraryFilter ? null : options.selectedLibrary
+  if (libraryFilter) return record.matchedLibraries.includes(libraryFilter)
 
-  const filtered = records.filter((c) => {
-    if (!options.severities.has(c.severity)) return false
-    if (!c.sources.some((s) => options.sources.has(s as SourceId))) return false
-    if (options.kevOnly && !c.kev) return false
-    if (techNone) return false
+  if (options.appStack && options.appStack.libraries.length > 0) {
+    const libraryHit = record.matchedLibraries.length > 0
+    const scopeTechHit = Boolean(
+      appScopeTechSet
+      && record.technologies.some((techId) => appScopeTechSet.has(techId)),
+    )
+    return libraryHit || (techFallback && scopeTechHit)
+  }
+  if (appTechSet) return record.technologies.some((techId) => appTechSet.has(techId))
+  if (techSet) return record.technologies.some((techId) => techSet.has(techId))
+  return true
+}
 
-    if (libraryFilter) {
-      if (!c.matchedLibraries.includes(libraryFilter)) return false
-    } else if (options.appStack && options.appStack.libraries.length > 0) {
-      const libraryHit = c.matchedLibraries.length > 0
-      // Solo frameworks de producto (magento/wordpress…), no el lenguaje suelto.
-      const scopeTechHit = Boolean(
-        appScopeTechSet
-        && c.technologies.some((techId) => appScopeTechSet.has(techId)),
-      )
-      if (!libraryHit && !(techFallback && scopeTechHit)) return false
-    } else if (appTechSet) {
-      if (!c.technologies.some((techId) => appTechSet.has(techId))) return false
-    } else if (techSet && !c.technologies.some((techId) => techSet.has(techId))) {
-      return false
-    }
+function filterCveRecords(records: CveRecord[], options: FilterCveOptions): CveRecord[] {
+  const query = options.search.trim().toLowerCase()
+  const searchPattern = query ? compileSearchPattern(query) : null
 
-    if (options.minEpss > 0 && (c.epss?.score ?? 0) < options.minEpss) return false
-    if (!searchPattern) return true
-    // CVE id / alias: substring (p. ej. 2026-112); resto: límite de palabra.
-    if (c.id.toLowerCase().includes(q) || c.aliases.some((alias) => alias.toLowerCase().includes(q))) {
-      return true
-    }
-    return textMatchesSearch(buildSearchHaystack(c), searchPattern)
+  const filtered = records.filter((record) => {
+    if (!passesTimeWindow(record, options.days, options.inventoryMode)) return false
+    if (!options.severities.has(record.severity)) return false
+    if (!record.sources.some((source) => options.sources.has(source as SourceId))) return false
+    if (options.kevOnly && !record.kev) return false
+    if (!passesStackFilters(record, options)) return false
+    if (options.minEpss > 0 && (record.epss?.score ?? 0) < options.minEpss) return false
+    return passesSearch(record, query, searchPattern)
   })
 
   filtered.sort((a, b) => riskScore(b) - riskScore(a))
   return filtered
 }
 
+function windowLabel(days: number): string {
+  if (days === 1) return '24 h'
+  if (days === 90) return '3 m'
+  return `${days} d`
+}
+
 /**
  * Un solo pase de filtros: scope de app (para librerías) + filas de tabla CVE.
- * Evita recorrer dos veces el mismo arreglo de registros.
+ * Si la ventana elegida queda vacía, amplía a 90 días automáticamente.
  */
 export function useCveViews(records: CveRecord[]) {
   const { options: appOptions } = useAppsConfig()
   const {
-    severities, sources, kevOnly, techAll, technologies, minEpss, search,
+    severities, sources, kevOnly, techAll, technologies, minEpss, search, days,
     selectedAppId, selectedLibrary,
   } = useFilters()
 
@@ -490,8 +501,10 @@ export function useCveViews(records: CveRecord[]) {
     return option ? resolveAppStackCached(option.id, option.entry) : null
   }, [appOptions, selectedAppId])
 
+  const inventoryMode = Boolean(selectedAppId && (appStack?.libraries.length ?? 0) > 0)
+
   return useMemo(() => {
-    const libraryScopedRows = filterCveRecords(records, {
+    const baseOptions: FilterCveOptions = {
       severities: new Set(severities),
       sources: new Set(sources),
       kevOnly,
@@ -499,17 +512,41 @@ export function useCveViews(records: CveRecord[]) {
       technologies,
       minEpss,
       search,
+      days,
+      inventoryMode,
       appStack,
       selectedLibrary: null,
       ignoreLibraryFilter: true,
-    })
+    }
+
+    let libraryScopedRows = filterCveRecords(records, baseOptions)
+    let windowFallback = false
+    if (libraryScopedRows.length === 0 && days < CORPUS_WINDOW_DAYS) {
+      const wider = filterCveRecords(records, {
+        ...baseOptions,
+        days: CORPUS_WINDOW_DAYS,
+      })
+      if (wider.length > 0) {
+        libraryScopedRows = wider
+        windowFallback = true
+      }
+    }
+
     const rows = selectedLibrary
       ? libraryScopedRows.filter((record) => record.matchedLibraries.includes(selectedLibrary))
       : libraryScopedRows
-    return { rows, libraryScopedRows }
+
+    return {
+      rows,
+      libraryScopedRows,
+      windowFallback,
+      fallbackHint: windowFallback
+        ? `Sin hallazgos en ${windowLabel(days)} · mostrando últimos ${windowLabel(CORPUS_WINDOW_DAYS)}`
+        : null,
+    }
   }, [
     records, severities, sources, kevOnly, techAll, technologies, minEpss,
-    search, appStack, selectedLibrary,
+    search, days, inventoryMode, appStack, selectedLibrary,
   ])
 }
 

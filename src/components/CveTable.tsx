@@ -337,7 +337,7 @@ export const CveTable = memo(function CveTable({
                   <Box sx={EMPTY_CELL_SX}>
                     {kevOnly
                       ? 'Ninguna CVE explotada (KEV) en estos filtros. Si el KPI KEV dice «Fuente no disponible», apaga «Solo explotadas» o recarga Fuentes.'
-                      : 'Sin CVEs con los filtros actuales. Amplía tecnologías o relaja severidad, fuentes o EPSS.'}
+                      : 'Sin CVEs con los filtros actuales (ni en 3 meses). Relaja búsqueda, tecnologías, severidad, fuentes o EPSS.'}
                   </Box>
                 </TableCell>
               </TableRow>

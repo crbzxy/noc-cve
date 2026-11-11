@@ -83,7 +83,7 @@ export default function App() {
   const deferredRecords = useDeferredValue(records)
   const deferredLibraries = useDeferredValue(appLibraries)
   const deferredPackageHits = useDeferredValue(packageHits)
-  const { rows, libraryScopedRows } = useCveViews(deferredRecords)
+  const { rows, libraryScopedRows, fallbackHint } = useCveViews(deferredRecords)
   const libraryRisk = useMemo(
     () => buildLibraryRiskRows(deferredLibraries, libraryScopedRows, deferredPackageHits),
     [deferredLibraries, libraryScopedRows, deferredPackageHits],
@@ -285,7 +285,7 @@ export default function App() {
           </Box>
 
           <Box sx={{ flexShrink: 0 }}>
-            <FiltersBar kevUnavailable={kevUnavailable} />
+            <FiltersBar kevUnavailable={kevUnavailable} windowFallbackHint={fallbackHint} />
           </Box>
 
           {!selectedAppId && (

@@ -1,5 +1,5 @@
 import {
-  Box, ButtonBase, Checkbox, FormControl, FormControlLabel, InputLabel, ListItemText, MenuItem,
+  Alert, Box, ButtonBase, Checkbox, FormControl, FormControlLabel, InputLabel, ListItemText, MenuItem,
   OutlinedInput, Select, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography,
 } from '@mui/material'
 import { useSourcesConfig } from '../hooks/useSourcesConfig'
@@ -22,7 +22,13 @@ function Separator() {
   return <Box aria-hidden sx={{ width: '1px', height: 28, bgcolor: BORDER_STRONG, display: { xs: 'none', md: 'block' } }} />
 }
 
-export function FiltersBar({ kevUnavailable = false }: { kevUnavailable?: boolean }) {
+export function FiltersBar({
+  kevUnavailable = false,
+  windowFallbackHint = null,
+}: {
+  kevUnavailable?: boolean
+  windowFallbackHint?: string | null
+}) {
   const f = useFilters()
   const { config } = useSourcesConfig()
 
@@ -44,12 +50,20 @@ export function FiltersBar({ kevUnavailable = false }: { kevUnavailable?: boolea
         borderRadius: '12px',
       }}
     >
+      {windowFallbackHint && (
+        <Alert
+          severity="info"
+          sx={{ mb: 1.25, py: 0, '& .MuiAlert-message': { py: 0.75, fontSize: 13 } }}
+        >
+          {windowFallbackHint}
+        </Alert>
+      )}
       <Stack direction="row" spacing={1.25} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
         <Tooltip
           title={
             f.selectedAppId
               ? 'Con app: la ventana filtra el inventario, pero CRITICAL/HIGH de tus libs se mantienen siempre (versión sin parche).'
-              : 'Ventana de noticias: CVE publicados/modificados en ese periodo.'
+              : 'Ventana de noticias: CVE publicados/modificados en ese periodo. Si no hay hallazgos, se amplía a 3 meses.'
           }
         >
           <ToggleButtonGroup
