@@ -8,6 +8,7 @@ import { createServer as createHttpsServer } from 'node:https'
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { requireHttpsTarget, upstreams } from '../proxy.config.mjs'
+import { httpErrorPayload, networkErrorPayload } from '../proxy.errors.mjs'
 import { authConfigFingerprint, handleAuthRequest } from './auth.mjs'
 import { handleCorpusRequest } from './corpus/http.mjs'
 import { startCorpusWorker } from './corpus/store.mjs'
@@ -106,24 +107,10 @@ async function proxy(req, res, prefix, up) {
       const detail = responseBody.length
         ? responseBody.toString('utf8').slice(0, 500)
         : `Upstream respondió ${r.status} sin cuerpo (¿firewall hacia ${up.target}?)`
-      const authHint = r.status === 401 || r.status === 403
-        ? (
-          up.target.includes('vulncheck') ? 'Agrega VULNCHECK_TOKEN en .env.'
-            : up.target.includes('wordfence') ? 'Agrega WORDFENCE_API_KEY en .env.'
-              : up.target.includes('cve.org')
-                ? 'CVE.org no usa API key: pide a Seguridad liberar/excluir www.cve.org (Web Filter / SSL Inspection).'
-                : up.target.includes('github.com') ? 'Agrega GITHUB_TOKEN en .env si es rate limit.'
-                  : up.target.includes('nvd.nist') ? 'Revisa NVD_API_KEY o rate limit.'
-                    : 'Revisa credenciales .env o pide a Seguridad liberar el host.'
-        )
-        : undefined
-      const err = jsonError(502, {
-        error: `No se pudo consultar ${up.target}${up.path}`,
-        status: r.status,
-        detail,
-        hint: authHint,
-        upstream: url.split('?')[0],
-      })
+      const err = jsonError(
+        502,
+        httpErrorPayload(up.target, up.path, r.status, detail, url),
+      )
       res.writeHead(err.status, err.headers).end(err.body)
       return
     }
@@ -134,17 +121,14 @@ async function proxy(req, res, prefix, up) {
     res.writeHead(r.status, headers).end(responseBody)
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
-    const aborted = controller.signal.aborted
-    const tlsIssue = /self-signed|certificate|UNABLE_TO_VERIFY|CERT_UNTRUSTED/i.test(message)
-    const err = jsonError(502, {
-      error: aborted
-        ? `Timeout (${UPSTREAM_TIMEOUT_MS} ms) al consultar ${up.target}`
-        : `Fallo de red hacia ${up.target}: ${message}`,
-      hint: tlsIssue
-        ? `Pide a Seguridad excluir ${up.target} de SSL Inspection o instalar el CA corporativo en el server (trust store del SO).`
-        : `Verifica salida HTTPS hacia ${up.target} (firewall / Web Filter).`,
-      upstream: `${up.target}${up.path}`,
-    })
+    const err = jsonError(
+      502,
+      networkErrorPayload(up.target, message, {
+        aborted: controller.signal.aborted,
+        timeoutMs: UPSTREAM_TIMEOUT_MS,
+        path: up.path,
+      }),
+    )
     res.writeHead(err.status, err.headers).end(err.body)
   } finally {
     clearTimeout(timer)
