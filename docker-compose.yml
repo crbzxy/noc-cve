@@ -11,15 +11,12 @@ services:
       - .env
     environment:
       VITE_DEV_HOST: "0.0.0.0"
-      # Proxy/firewall corporativo con CA interna
-      UPSTREAM_TLS_INSECURE: "1"
-      NODE_TLS_REJECT_UNAUTHORIZED: "0"
     volumes:
       - .:/app
       - cve_node_modules:/app/node_modules
-    # Genera ingest.bundle.mjs y levanta Vite accesible desde fuera del contenedor
+    # npm ci refresca el volume node_modules; luego bundle + Vite
     command: >
-      sh -c "npm run bundle:corpus && npm run dev -- --host 0.0.0.0 --port 5173"
+      sh -c "npm ci && npm run bundle:corpus && npm run dev -- --host 0.0.0.0 --port 5173"
     networks:
       - default
 
