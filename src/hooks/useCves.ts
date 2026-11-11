@@ -18,6 +18,7 @@ import {
   type ResolvedAppStack,
   type TrackedLibrary,
 } from '../lib/resolveAppStack'
+import { normalizeSourceError } from '../lib/http'
 import { compileSearchPattern, textMatchesSearch } from '../lib/searchText'
 import { fetchCorpus, refreshCorpus } from '../sources/corpus'
 import { fetchEpss } from '../sources/epss'
@@ -65,7 +66,10 @@ function health(
     status: !enabled ? 'off' : q.isError ? 'error' : waiting ? 'loading' : 'ok',
     count,
     detail,
-    error: q.error instanceof Error ? q.error.message : undefined,
+    error: normalizeSourceError(
+      id,
+      q.error instanceof Error ? q.error.message : undefined,
+    ),
     updatedAt: q.dataUpdatedAt || undefined,
     refetch: () => void q.refetch(),
   }
@@ -169,7 +173,7 @@ function corpusSourceHealth(
     baseUrl,
     status: row.status === 'error' ? 'error' : row.status === 'off' ? 'off' : 'ok',
     count: row.count,
-    error: row.error,
+    error: normalizeSourceError(id, row.error),
     updatedAt: row.updatedAt ?? snapshot.generatedAt,
     refetch,
   }

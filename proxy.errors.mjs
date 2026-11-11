@@ -37,7 +37,7 @@ export function authHintForUpstream(target, status) {
   if (target.includes('vulncheck')) return 'Agrega VULNCHECK_TOKEN en .env.'
   if (target.includes('wordfence')) return 'Agrega WORDFENCE_API_KEY en .env.'
   if (target.includes('cve.org')) {
-    return 'CVE.org no usa API key: pide a Seguridad liberar/excluir www.cve.org (Web Filter / SSL Inspection).'
+    return 'CVE.org no pide API key: pide a Seguridad liberar/excluir www.cve.org (Web Filter / SSL Inspection).'
   }
   if (target.includes('github.com')) return 'Agrega GITHUB_TOKEN en .env si es rate limit.'
   if (target.includes('nvd.nist')) return 'Revisa NVD_API_KEY o rate limit.'

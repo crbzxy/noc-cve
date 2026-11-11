@@ -41,6 +41,28 @@ function messagePart(value: unknown): string | null {
   return null
 }
 
+/** Corrige mensajes engañosos o basura (`true`) guardados en corpus / upstream. */
+export function normalizeSourceError(sourceId: string, error: string | undefined): string | undefined {
+  if (!error) return undefined
+  const trimmed = error.replace(/\s+/g, ' ').trim()
+  if (!trimmed) return undefined
+
+  if (trimmed === 'true' || trimmed === 'false') {
+    if (sourceId === 'vulncheck-kev') return 'Falta VULNCHECK_TOKEN en .env (el API respondió sin detalle).'
+    if (sourceId === 'wordfence') return 'Falta WORDFENCE_API_KEY en .env (el API respondió sin detalle).'
+    return 'El upstream respondió sin mensaje útil. Revisa token/.env o firewall.'
+  }
+
+  if (
+    (sourceId === 'cveorg' || /cve\.org/i.test(trimmed))
+    && /api\s*key/i.test(trimmed)
+  ) {
+    return 'CVE.org 403: no usa API key. Pide a Seguridad liberar/excluir www.cve.org (Web Filter / SSL Inspection).'
+  }
+
+  return error
+}
+
 const FORTIGUARD_HOSTS = [
   'services.nvd.nist.gov',
   'api.github.com',
@@ -75,9 +97,9 @@ const SOURCE_HINTS: SourceHint[] = [
   },
   {
     match: /\/api\/cveorg\b/,
-    on401: 'CVE.org no usa API key. Revisa firewall/TLS hacia www.cve.org.',
-    on403: 'CVE.org 403: no hay API key. Pide a Seguridad liberar/excluir www.cve.org (Web Filter / SSL Inspection).',
-    on429: 'CVE.org rate limit (429). Espera y reintenta; no hay API key en beta.',
+    on401: 'CVE.org no pide credenciales. Revisa firewall/TLS hacia www.cve.org.',
+    on403: 'CVE.org 403: suele ser Web Filter / SSL Inspection. Pide a Seguridad liberar www.cve.org (no usa API key).',
+    on429: 'CVE.org rate limit (429). Espera y reintenta (beta sin API key).',
   },
   {
     match: /\/api\/wordfence\b/,
@@ -144,14 +166,25 @@ function statusHintForUrl(url: string, status: number): string | null {
   return null
 }
 
+function sourceIdFromProxyUrl(requestUrl: string): string {
+  if (/\/api\/cveorg\b/.test(requestUrl)) return 'cveorg'
+  if (/\/api\/vckev\b/.test(requestUrl)) return 'vulncheck-kev'
+  if (/\/api\/wordfence\b/.test(requestUrl)) return 'wordfence'
+  if (/\/api\/kev\b/.test(requestUrl)) return 'kev'
+  if (/\/api\/euvd\b/.test(requestUrl)) return 'euvd'
+  return 'unknown'
+}
+
 async function readErrorMessage(res: Response, requestUrl: string): Promise<string> {
   const hint = statusHintForUrl(requestUrl, res.status)
+  const sourceId = sourceIdFromProxyUrl(requestUrl)
   try {
     const text = await res.text()
     if (!text) {
-      return hint
+      const empty = hint
         ? `${res.status} ${res.statusText} — ${hint}`
         : `${res.status} ${res.statusText}`
+      return normalizeSourceError(sourceId, empty) ?? empty
     }
     const blocked = detectFirewallBlock(text)
     if (blocked) return blocked
@@ -165,24 +198,28 @@ async function readErrorMessage(res: Response, requestUrl: string): Promise<stri
       ].filter((part): part is string => Boolean(part))
       if (parts.length > 0) {
         const joined = parts.join(' — ')
-        return hint && !joined.includes(hint) ? `${joined} — ${hint}` : joined
+        const withHint = hint && !joined.includes(hint) ? `${joined} — ${hint}` : joined
+        return normalizeSourceError(sourceId, withHint) ?? withHint
       }
       if (hint) return `${res.status} ${res.statusText} — ${hint}`
     } catch {
       const snippet = text.slice(0, 240).trim()
       if (snippet === 'true' || snippet === 'false') {
-        return hint
+        const fallback = hint
           ? `${res.status} ${res.statusText} — ${hint}`
           : `${res.status} ${res.statusText}`
+        return normalizeSourceError(sourceId, snippet) ?? fallback
       }
-      return hint ? `${snippet} — ${hint}` : snippet
+      const withSnippet = hint ? `${snippet} — ${hint}` : snippet
+      return normalizeSourceError(sourceId, withSnippet) ?? withSnippet
     }
   } catch {
     // ignore body read errors
   }
-  return hint
+  const finalMessage = hint
     ? `${res.status} ${res.statusText} — ${hint}`
     : `${res.status} ${res.statusText}`
+  return normalizeSourceError(sourceId, finalMessage) ?? finalMessage
 }
 
 async function parseJsonBody<T>(res: Response): Promise<T> {
