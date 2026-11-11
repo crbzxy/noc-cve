@@ -7,10 +7,38 @@ export class HttpError extends Error {
 }
 
 type UpstreamErrorBody = {
-  error?: string
-  hint?: string
-  detail?: string
+  error?: unknown
+  hint?: unknown
+  detail?: unknown
+  code?: unknown
   status?: number
+}
+
+/** Undici oculta TLS/DNS en `error.cause`; el mensaje suele ser solo "fetch failed". */
+function describeFetchFailure(error: unknown): string {
+  const parts: string[] = []
+  let current: unknown = error
+  for (let depth = 0; current && depth < 6; depth += 1) {
+    if (current instanceof Error) {
+      if (current.message) parts.push(current.message)
+      const code = 'code' in current ? current.code : undefined
+      if (typeof code === 'string' && code) parts.push(code)
+      current = current.cause
+      continue
+    }
+    parts.push(String(current))
+    break
+  }
+  const unique = [...new Set(parts.map((part) => part.trim()).filter(Boolean))]
+  return unique.length > 0 ? unique.join(' · ') : 'Error de red desconocido'
+}
+
+function messagePart(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim() && value.trim() !== 'true' && value.trim() !== 'false') {
+    return value.trim()
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  return null
 }
 
 const FORTIGUARD_HOSTS = [
@@ -129,10 +157,24 @@ async function readErrorMessage(res: Response, requestUrl: string): Promise<stri
     if (blocked) return blocked
     try {
       const parsed = JSON.parse(text) as UpstreamErrorBody
-      const parts = [parsed.error, parsed.hint, parsed.detail].filter(Boolean)
-      if (parts.length > 0) return parts.join(' — ')
+      const parts = [
+        messagePart(parsed.error),
+        messagePart(parsed.hint),
+        messagePart(parsed.detail),
+        messagePart(parsed.code),
+      ].filter((part): part is string => Boolean(part))
+      if (parts.length > 0) {
+        const joined = parts.join(' — ')
+        return hint && !joined.includes(hint) ? `${joined} — ${hint}` : joined
+      }
+      if (hint) return `${res.status} ${res.statusText} — ${hint}`
     } catch {
-      const snippet = text.slice(0, 240)
+      const snippet = text.slice(0, 240).trim()
+      if (snippet === 'true' || snippet === 'false') {
+        return hint
+          ? `${res.status} ${res.statusText} — ${hint}`
+          : `${res.status} ${res.statusText}`
+      }
       return hint ? `${snippet} — ${hint}` : snippet
     }
   } catch {
@@ -176,11 +218,16 @@ function resolveUrl(url: string): string {
 
 export async function getJson<T>(url: string, signal?: AbortSignal): Promise<{ data: T; headers: Headers }> {
   const resolved = resolveUrl(url)
-  const res = await fetch(resolved, { signal })
-  if (!res.ok) {
-    throw new HttpError(res.status, await readErrorMessage(res, resolved))
+  try {
+    const res = await fetch(resolved, { signal })
+    if (!res.ok) {
+      throw new HttpError(res.status, await readErrorMessage(res, resolved))
+    }
+    return { data: await parseJsonBody<T>(res), headers: res.headers }
+  } catch (error) {
+    if (error instanceof HttpError) throw error
+    throw new HttpError(0, describeFetchFailure(error))
   }
-  return { data: await parseJsonBody<T>(res), headers: res.headers }
 }
 
 export async function postJson<T>(
@@ -189,16 +236,21 @@ export async function postJson<T>(
   signal?: AbortSignal,
 ): Promise<{ data: T; headers: Headers }> {
   const resolved = resolveUrl(url)
-  const res = await fetch(resolved, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(body),
-    signal,
-  })
-  if (!res.ok) {
-    throw new HttpError(res.status, await readErrorMessage(res, resolved))
+  try {
+    const res = await fetch(resolved, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+      signal,
+    })
+    if (!res.ok) {
+      throw new HttpError(res.status, await readErrorMessage(res, resolved))
+    }
+    return { data: await parseJsonBody<T>(res), headers: res.headers }
+  } catch (error) {
+    if (error instanceof HttpError) throw error
+    throw new HttpError(0, describeFetchFailure(error))
   }
-  return { data: await parseJsonBody<T>(res), headers: res.headers }
 }
 
 export const sleep = (ms: number, signal?: AbortSignal) =>

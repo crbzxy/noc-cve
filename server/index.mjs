@@ -8,7 +8,7 @@ import { createServer as createHttpsServer } from 'node:https'
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { requireHttpsTarget, upstreams } from '../proxy.config.mjs'
-import { httpErrorPayload, networkErrorPayload } from '../proxy.errors.mjs'
+import { describeFetchFailure, httpErrorPayload, networkErrorPayload } from '../proxy.errors.mjs'
 import { authConfigFingerprint, handleAuthRequest } from './auth.mjs'
 import { handleCorpusRequest } from './corpus/http.mjs'
 import { startCorpusWorker } from './corpus/store.mjs'
@@ -120,10 +120,9 @@ async function proxy(req, res, prefix, up) {
     if (cacheable) cache.set(url, { at: Date.now(), body: responseBody, headers })
     res.writeHead(r.status, headers).end(responseBody)
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
     const err = jsonError(
       502,
-      networkErrorPayload(up.target, message, {
+      networkErrorPayload(up.target, describeFetchFailure(e), {
         aborted: controller.signal.aborted,
         timeoutMs: UPSTREAM_TIMEOUT_MS,
         path: up.path,

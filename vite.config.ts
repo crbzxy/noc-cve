@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { defineConfig, loadEnv, type Connect, type Plugin } from 'vite'
-import { httpErrorPayload, networkErrorPayload } from './proxy.errors.mjs'
+import { describeFetchFailure, httpErrorPayload, networkErrorPayload } from './proxy.errors.mjs'
 import { upstreams } from './proxy.config.mjs'
 
 /** Import nativo (evita que Vite reescriba rutas a `.vite-temp`). */
@@ -108,11 +108,10 @@ function fetchUpstreamProxyPlugin(env: Record<string, string>): Plugin {
           res.writeHead(upstream.status, headers)
           res.end(responseBody)
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error)
           writeJsonError(
             res,
             502,
-            networkErrorPayload(up.target, message, {
+            networkErrorPayload(up.target, describeFetchFailure(error), {
               aborted: controller.signal.aborted,
               timeoutMs,
               path: up.path,

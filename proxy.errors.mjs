@@ -5,6 +5,29 @@ const DNS_PATTERN = /ENOTFOUND|EAI_AGAIN|getaddrinfo/i
 const REFUSED_PATTERN = /ECONNREFUSED|ECONNRESET|ETIMEDOUT|EPIPE/i
 
 /**
+ * Undici suele devolver solo "fetch failed"; la causa real está en `error.cause`.
+ * @param {unknown} error
+ * @returns {string}
+ */
+export function describeFetchFailure(error) {
+  const parts = []
+  let current = error
+  for (let depth = 0; current && depth < 6; depth += 1) {
+    if (current instanceof Error) {
+      if (current.message) parts.push(current.message)
+      const code = 'code' in current ? current.code : undefined
+      if (typeof code === 'string' && code) parts.push(code)
+      current = current.cause
+      continue
+    }
+    parts.push(String(current))
+    break
+  }
+  const unique = [...new Set(parts.map((part) => part.trim()).filter(Boolean))]
+  return unique.length > 0 ? unique.join(' · ') : 'Error de red desconocido'
+}
+
+/**
  * @param {string} target
  * @param {number} status
  * @returns {string | undefined}
