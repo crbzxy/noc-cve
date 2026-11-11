@@ -130,7 +130,7 @@ export function SourceStatus({
                   >
                     {h.status === 'error'
                       ? h.error
-                      : `${st.text}${h.count != null ? ` · ${h.count.toLocaleString('es-MX')}` : ''}`}
+                      : `${st.text}${h.count != null ? ` · ${h.count.toLocaleString('es-MX')}` : ''}${h.detail ? ` · ${h.detail}` : ''}`}
                   </Typography>
                   {h.updatedAt && h.status !== 'error' && (
                     <Typography variant="caption" color="text.disabled" noWrap>

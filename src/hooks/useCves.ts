@@ -30,6 +30,8 @@ import { useSourcesConfig } from './useSourcesConfig'
 
 /** Tope de CVEs a enriquecer con EPSS (los más relevantes del stack). */
 const EPSS_MAX_IDS = 250
+/** Tope de paquetes OSV cuando no hay app seleccionada (todas las apps). */
+const OSV_GLOBAL_PACKAGE_CAP = 80
 /** Referencias estables: evita re-renders por `?? []` en cada render de useCves. */
 const EMPTY_LIBRARIES: TrackedLibrary[] = []
 const EMPTY_CRITICAL_IDS: string[] = []
@@ -40,6 +42,7 @@ export interface SourceHealth {
   baseUrl?: string
   status: 'loading' | 'ok' | 'error' | 'off'
   count?: number
+  detail?: string
   error?: string
   updatedAt?: number
   refetch: () => void
@@ -52,13 +55,17 @@ function health(
   enabled: boolean,
   count?: number,
   baseUrl?: string,
+  detail?: string,
 ): SourceHealth {
+  // Query deshabilitada (p.ej. OSV sin paquetes) no debe quedar en "Consultando…" eterno.
+  const waiting = enabled && q.isFetching && !q.data && !q.isError
   return {
     id,
     label,
     baseUrl,
-    status: !enabled ? 'off' : q.isError ? 'error' : q.isPending ? 'loading' : 'ok',
+    status: !enabled ? 'off' : q.isError ? 'error' : waiting ? 'loading' : 'ok',
     count,
+    detail,
     error: q.error instanceof Error ? q.error.message : undefined,
     updatedAt: q.dataUpdatedAt || undefined,
     refetch: () => void q.refetch(),
@@ -114,6 +121,25 @@ function mergeWatchedPackages(
   return [...map.values()]
 }
 
+/** Paquetes con versión de todas las apps (tope) para OSV en vista global. */
+function collectGlobalWatchedPackages(
+  options: Array<{ id: string; entry: Parameters<typeof resolveAppStackCached>[1] }>,
+  cap: number,
+): WatchedPackage[] {
+  const map = new Map<string, WatchedPackage>()
+  for (const option of options) {
+    const stack = resolveAppStackCached(option.id, option.entry)
+    for (const pkg of stack.watchedPackages) {
+      if (!pkg.version) continue
+      const key = packageKeyOf(pkg.ecosystem, pkg.name, pkg.version)
+      if (map.has(key)) continue
+      map.set(key, pkg)
+      if (map.size >= cap) return [...map.values()]
+    }
+  }
+  return [...map.values()]
+}
+
 function corpusSourceHealth(
   snapshot: CorpusSnapshot | undefined,
   id: string,
@@ -159,10 +185,15 @@ export function useCves() {
     () => (selectedApp ? resolveAppStackCached(selectedApp.id, selectedApp.entry) : null),
     [selectedApp],
   )
-  const watchedPackages = useMemo(
-    () => mergeWatchedPackages(config.watchedPackages ?? [], appStack?.watchedPackages ?? []),
-    [config.watchedPackages, appStack],
-  )
+  const watchedPackages = useMemo(() => {
+    const fromConfig = config.watchedPackages ?? []
+    if (selectedAppId && appStack) {
+      return mergeWatchedPackages(fromConfig, appStack.watchedPackages)
+    }
+    // Vista global: OSV cruza un muestreo del inventario de apps (no quedarse en 0).
+    const fromApps = collectGlobalWatchedPackages(appOptions, OSV_GLOBAL_PACKAGE_CAP)
+    return mergeWatchedPackages(fromConfig, fromApps)
+  }, [config.watchedPackages, appStack, selectedAppId, appOptions])
   const watchedPackagesKey = useMemo(
     () => fingerprintIds(watchedPackages.map((pkg) => packageKeyOf(pkg.ecosystem, pkg.name, pkg.version))),
     [watchedPackages],
@@ -170,7 +201,8 @@ export function useCves() {
 
   const osvConfigOn = sourceEnabledInConfig(findSource(config, 'osv')?.enabled)
   const epssConfigOn = sourceEnabledInConfig(findSource(config, 'epss')?.enabled)
-  const osvOn = osvConfigOn && sources.includes('osv') && watchedPackages.length > 0
+  const osvFilterOn = osvConfigOn && sources.includes('osv')
+  const osvOn = osvFilterOn && watchedPackages.length > 0
 
   const corpus = useQuery({
     queryKey: ['corpus'],
@@ -300,9 +332,14 @@ export function useCves() {
         'osv',
         osvMeta?.label ?? 'OSV',
         osvHits,
-        osvConfigOn && sources.includes('osv'),
+        osvFilterOn,
         osvOn ? packageHits.reduce((sum, hit) => sum + hit.vulnIds.length, 0) : 0,
         osvMeta?.baseUrl,
+        osvFilterOn && !osvOn
+          ? 'Sin paquetes con versión en el inventario'
+          : osvOn
+            ? `${watchedPackages.length} paquetes vigilados`
+            : undefined,
       ),
       corpusSourceHealth(snapshot, 'euvd', euvdMeta?.label ?? 'EUVD', euvdMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(euvdMeta?.enabled)),
       corpusSourceHealth(snapshot, 'kev', kevMeta?.label ?? 'KEV', kevMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(kevMeta?.enabled)),
@@ -324,7 +361,8 @@ export function useCves() {
       ),
     ]
   }, [
-    corpus.data, osvHits, epss, osvOn, osvConfigOn, epssConfigOn, epssIds.length, sources, packageHits,
+    corpus.data, osvHits, epss, osvOn, osvFilterOn, watchedPackages.length, epssConfigOn, epssIds.length,
+    sources, packageHits,
     nvdMeta, ghMeta, cveorgMeta, wordfenceMeta, osvMeta, euvdMeta, kevMeta, vulncheckMeta, epssMeta,
     reloadCorpus,
   ])
