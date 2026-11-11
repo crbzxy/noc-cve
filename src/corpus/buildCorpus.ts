@@ -19,18 +19,57 @@ function sourceEnabled(config: AppSourcesConfig, id: string): boolean {
   return findSource(config, id)?.enabled !== false
 }
 
+const CONSUMO_ERROR_MAX = 180
+
+function shortError(message: string): string {
+  const compact = message.replace(/\s+/g, ' ').trim()
+  if (compact.length <= CONSUMO_ERROR_MAX) return compact
+  return `${compact.slice(0, CONSUMO_ERROR_MAX)}…`
+}
+
+/** Una línea por fuente y ciclo de ingesta (~cada 5 min). No loguea cada request HTTP. */
+function logSourceConsumo(input: {
+  label: string
+  enabled: boolean
+  count?: number
+  error?: string
+  ms?: number
+}) {
+  if (!input.enabled) {
+    console.log(`[consumo] ${input.label} · off`)
+    return
+  }
+  if (input.error) {
+    console.error(
+      `[consumo] ${input.label} · error · ${shortError(input.error)}`
+      + (input.ms != null ? ` · ${input.ms} ms` : ''),
+    )
+    return
+  }
+  console.log(
+    `[consumo] ${input.label} · ok · ${input.count ?? 0} registros`
+    + (input.ms != null ? ` · ${input.ms} ms` : ''),
+  )
+}
+
 async function settleList(
   id: string,
   label: string,
   enabled: boolean,
   run: () => Promise<PartialCve[]>,
 ): Promise<{ id: string; label: string; enabled: boolean; list: PartialCve[]; error?: string }> {
-  if (!enabled) return { id, label, enabled, list: [] }
+  if (!enabled) {
+    logSourceConsumo({ label, enabled })
+    return { id, label, enabled, list: [] }
+  }
+  const started = Date.now()
   try {
     const list = await run()
+    logSourceConsumo({ label, enabled, count: list.length, ms: Date.now() - started })
     return { id, label, enabled, list }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+    logSourceConsumo({ label, enabled, error: message, ms: Date.now() - started })
     return { id, label, enabled, list: [], error: message }
   }
 }
@@ -70,28 +109,50 @@ export async function buildCorpus(options: BuildCorpusOptions): Promise<CorpusSn
     settleList('euvd', euvdMeta?.label ?? 'EUVD', sourceEnabled(config, 'euvd'), () => fetchEuvd(days, options.signal)),
   ])
 
+  const kevLabel = kevMeta?.label ?? 'CISA KEV'
   let kev: KevCatalog | undefined
   let kevError: string | undefined
   let kevCount: number | undefined
   if (sourceEnabled(config, 'kev')) {
+    const started = Date.now()
     try {
       kev = await fetchKev(options.signal)
       kevCount = kev.byId.size
+      logSourceConsumo({ label: kevLabel, enabled: true, count: kevCount, ms: Date.now() - started })
     } catch (error) {
       kevError = error instanceof Error ? error.message : String(error)
+      logSourceConsumo({ label: kevLabel, enabled: true, error: kevError, ms: Date.now() - started })
     }
+  } else {
+    logSourceConsumo({ label: kevLabel, enabled: false })
   }
 
+  const vulncheckLabel = vulncheckMeta?.label ?? 'VulnCheck KEV'
   let vulncheckKev: VulncheckKevCatalog | undefined
   let vulncheckError: string | undefined
   let vulncheckCount: number | undefined
   if (sourceEnabled(config, 'vulncheck-kev')) {
+    const started = Date.now()
     try {
       vulncheckKev = await fetchVulncheckKev(options.signal)
       vulncheckCount = vulncheckKev.byId.size
+      logSourceConsumo({
+        label: vulncheckLabel,
+        enabled: true,
+        count: vulncheckCount,
+        ms: Date.now() - started,
+      })
     } catch (error) {
       vulncheckError = error instanceof Error ? error.message : String(error)
+      logSourceConsumo({
+        label: vulncheckLabel,
+        enabled: true,
+        error: vulncheckError,
+        ms: Date.now() - started,
+      })
     }
+  } else {
+    logSourceConsumo({ label: vulncheckLabel, enabled: false })
   }
 
   const updatedAt = Date.now()

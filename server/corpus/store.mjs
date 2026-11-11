@@ -141,8 +141,11 @@ async function runIngest(force = false) {
       state.status = 'ready'
       state.error = null
       await persist(snapshot)
+      const ok = (snapshot.sources ?? []).filter((source) => source.status === 'ok').length
+      const err = (snapshot.sources ?? []).filter((source) => source.status === 'error').length
       console.log(
         `[corpus] Listo · ${snapshot.records.length} CVE · ${snapshot.ingestMs} ms`
+        + ` · fuentes ok ${ok}/error ${err}`
         + (snapshot.newCriticalIds?.length
           ? ` · +${snapshot.newCriticalIds.length} CRITICAL nuevos`
           : ''),

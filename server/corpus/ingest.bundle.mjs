@@ -133,6 +133,29 @@ var HttpError = class extends Error {
 		this.status = status;
 	}
 };
+/** Undici oculta TLS/DNS en `error.cause`; el mensaje suele ser solo "fetch failed". */
+function describeFetchFailure(error) {
+	const parts = [];
+	let current = error;
+	for (let depth = 0; current && depth < 6; depth += 1) {
+		if (current instanceof Error) {
+			if (current.message) parts.push(current.message);
+			const code = "code" in current ? current.code : void 0;
+			if (typeof code === "string" && code) parts.push(code);
+			current = current.cause;
+			continue;
+		}
+		parts.push(String(current));
+		break;
+	}
+	const unique = [...new Set(parts.map((part) => part.trim()).filter(Boolean))];
+	return unique.length > 0 ? unique.join(" · ") : "Error de red desconocido";
+}
+function messagePart(value) {
+	if (typeof value === "string" && value.trim() && value.trim() !== "true" && value.trim() !== "false") return value.trim();
+	if (typeof value === "number" && Number.isFinite(value)) return String(value);
+	return null;
+}
 var FORTIGUARD_HOSTS = [
 	"services.nvd.nist.gov",
 	"api.github.com",
@@ -226,13 +249,19 @@ async function readErrorMessage(res, requestUrl) {
 		try {
 			const parsed = JSON.parse(text);
 			const parts = [
-				parsed.error,
-				parsed.hint,
-				parsed.detail
-			].filter(Boolean);
-			if (parts.length > 0) return parts.join(" — ");
+				messagePart(parsed.error),
+				messagePart(parsed.hint),
+				messagePart(parsed.detail),
+				messagePart(parsed.code)
+			].filter((part) => Boolean(part));
+			if (parts.length > 0) {
+				const joined = parts.join(" — ");
+				return hint && !joined.includes(hint) ? `${joined} — ${hint}` : joined;
+			}
+			if (hint) return `${res.status} ${res.statusText} — ${hint}`;
 		} catch {
-			const snippet = text.slice(0, 240);
+			const snippet = text.slice(0, 240).trim();
+			if (snippet === "true" || snippet === "false") return hint ? `${res.status} ${res.statusText} — ${hint}` : `${res.status} ${res.statusText}`;
 			return hint ? `${snippet} — ${hint}` : snippet;
 		}
 	} catch {}
@@ -261,29 +290,39 @@ function resolveUrl(url) {
 }
 async function getJson(url, signal) {
 	const resolved = resolveUrl(url);
-	const res = await fetch(resolved, { signal });
-	if (!res.ok) throw new HttpError(res.status, await readErrorMessage(res, resolved));
-	return {
-		data: await parseJsonBody(res),
-		headers: res.headers
-	};
+	try {
+		const res = await fetch(resolved, { signal });
+		if (!res.ok) throw new HttpError(res.status, await readErrorMessage(res, resolved));
+		return {
+			data: await parseJsonBody(res),
+			headers: res.headers
+		};
+	} catch (error) {
+		if (error instanceof HttpError) throw error;
+		throw new HttpError(0, describeFetchFailure(error));
+	}
 }
 async function postJson(url, body, signal) {
 	const resolved = resolveUrl(url);
-	const res = await fetch(resolved, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Accept: "application/json"
-		},
-		body: JSON.stringify(body),
-		signal
-	});
-	if (!res.ok) throw new HttpError(res.status, await readErrorMessage(res, resolved));
-	return {
-		data: await parseJsonBody(res),
-		headers: res.headers
-	};
+	try {
+		const res = await fetch(resolved, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "application/json"
+			},
+			body: JSON.stringify(body),
+			signal
+		});
+		if (!res.ok) throw new HttpError(res.status, await readErrorMessage(res, resolved));
+		return {
+			data: await parseJsonBody(res),
+			headers: res.headers
+		};
+	} catch (error) {
+		if (error instanceof HttpError) throw error;
+		throw new HttpError(0, describeFetchFailure(error));
+	}
 }
 var sleep = (ms, signal) => new Promise((resolve, reject) => {
 	const t = setTimeout(resolve, ms);
@@ -835,27 +874,66 @@ async function fetchWordfence(days, signal) {
 function sourceEnabled(config, id) {
 	return findSource(config, id)?.enabled !== false;
 }
+var CONSUMO_ERROR_MAX = 180;
+function shortError(message) {
+	const compact = message.replace(/\s+/g, " ").trim();
+	if (compact.length <= CONSUMO_ERROR_MAX) return compact;
+	return `${compact.slice(0, CONSUMO_ERROR_MAX)}…`;
+}
+/** Una línea por fuente y ciclo de ingesta (~cada 5 min). No loguea cada request HTTP. */
+function logSourceConsumo(input) {
+	if (!input.enabled) {
+		console.log(`[consumo] ${input.label} · off`);
+		return;
+	}
+	if (input.error) {
+		console.error(`[consumo] ${input.label} · error · ${shortError(input.error)}` + (input.ms != null ? ` · ${input.ms} ms` : ""));
+		return;
+	}
+	console.log(`[consumo] ${input.label} · ok · ${input.count ?? 0} registros` + (input.ms != null ? ` · ${input.ms} ms` : ""));
+}
 async function settleList(id, label, enabled, run) {
-	if (!enabled) return {
-		id,
-		label,
-		enabled,
-		list: []
-	};
-	try {
+	if (!enabled) {
+		logSourceConsumo({
+			label,
+			enabled
+		});
 		return {
 			id,
 			label,
 			enabled,
-			list: await run()
+			list: []
+		};
+	}
+	const started = Date.now();
+	try {
+		const list = await run();
+		logSourceConsumo({
+			label,
+			enabled,
+			count: list.length,
+			ms: Date.now() - started
+		});
+		return {
+			id,
+			label,
+			enabled,
+			list
 		};
 	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		logSourceConsumo({
+			label,
+			enabled,
+			error: message,
+			ms: Date.now() - started
+		});
 		return {
 			id,
 			label,
 			enabled,
 			list: [],
-			error: error instanceof Error ? error.message : String(error)
+			error: message
 		};
 	}
 }
@@ -884,24 +962,62 @@ async function buildCorpus(options) {
 		settleList("wordfence", wordfenceMeta?.label ?? "Wordfence", sourceEnabled(config, "wordfence"), () => fetchWordfence(days, options.signal)),
 		settleList("euvd", euvdMeta?.label ?? "EUVD", sourceEnabled(config, "euvd"), () => fetchEuvd(days, options.signal))
 	]);
+	const kevLabel = kevMeta?.label ?? "CISA KEV";
 	let kev;
 	let kevError;
 	let kevCount;
-	if (sourceEnabled(config, "kev")) try {
-		kev = await fetchKev(options.signal);
-		kevCount = kev.byId.size;
-	} catch (error) {
-		kevError = error instanceof Error ? error.message : String(error);
-	}
+	if (sourceEnabled(config, "kev")) {
+		const started = Date.now();
+		try {
+			kev = await fetchKev(options.signal);
+			kevCount = kev.byId.size;
+			logSourceConsumo({
+				label: kevLabel,
+				enabled: true,
+				count: kevCount,
+				ms: Date.now() - started
+			});
+		} catch (error) {
+			kevError = error instanceof Error ? error.message : String(error);
+			logSourceConsumo({
+				label: kevLabel,
+				enabled: true,
+				error: kevError,
+				ms: Date.now() - started
+			});
+		}
+	} else logSourceConsumo({
+		label: kevLabel,
+		enabled: false
+	});
+	const vulncheckLabel = vulncheckMeta?.label ?? "VulnCheck KEV";
 	let vulncheckKev;
 	let vulncheckError;
 	let vulncheckCount;
-	if (sourceEnabled(config, "vulncheck-kev")) try {
-		vulncheckKev = await fetchVulncheckKev(options.signal);
-		vulncheckCount = vulncheckKev.byId.size;
-	} catch (error) {
-		vulncheckError = error instanceof Error ? error.message : String(error);
-	}
+	if (sourceEnabled(config, "vulncheck-kev")) {
+		const started = Date.now();
+		try {
+			vulncheckKev = await fetchVulncheckKev(options.signal);
+			vulncheckCount = vulncheckKev.byId.size;
+			logSourceConsumo({
+				label: vulncheckLabel,
+				enabled: true,
+				count: vulncheckCount,
+				ms: Date.now() - started
+			});
+		} catch (error) {
+			vulncheckError = error instanceof Error ? error.message : String(error);
+			logSourceConsumo({
+				label: vulncheckLabel,
+				enabled: true,
+				error: vulncheckError,
+				ms: Date.now() - started
+			});
+		}
+	} else logSourceConsumo({
+		label: vulncheckLabel,
+		enabled: false
+	});
 	const updatedAt = Date.now();
 	const records = applyTechnologyTags(aggregate({
 		days,
