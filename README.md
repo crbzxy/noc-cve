@@ -151,7 +151,7 @@ Las tecnologías **no tienen API propia**: se etiquetan por keywords sobre el co
 
 **Whitelist FortiGuard / firewall** (hosts a liberar): `services.nvd.nist.gov`, `api.github.com`, `www.cve.org`, `www.wordfence.com`, `api.osv.dev`, `euvdservices.enisa.europa.eu`, `www.cisa.gov`, `api.vulncheck.com`, `api.first.org`.
 
-**SSL Inspection:** si curl/Node reportan `self-signed certificate in certificate chain`, Seguridad debe excluir esos hosts de inspección o instalar el CA en el trust store del SO. El dashboard no desactiva la verificación TLS.
+**SSL Inspection:** si curl/Node reportan `self-signed certificate in certificate chain` / `SELF_SIGNED_CERT_IN_CHAIN`, el proxy sigue interceptando TLS. Liberar en Web Filter **no basta**. Opciones: (1) Seguridad excluye el host de **SSL Inspection**, o (2) confiar el CA en el contenedor con `certs/corp-ca.pem` + `NODE_EXTRA_CA_CERTS=/app/certs/corp-ca.pem` en `.env`. El dashboard no desactiva la verificación TLS.
 
 **Prioridad (orden por defecto):** KEV > ransomware > EPSS > match de stack > severidad > CVSS.  
 **Fusión:** CVE.org pisa a NVD en CVSS/descripción; CISA KEV pisa a VulnCheck en el flag `kev`.
