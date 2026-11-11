@@ -121,14 +121,20 @@ function mergeWatchedPackages(
   return [...map.values()]
 }
 
-/** Paquetes con versión de todas las apps (tope) para OSV en vista global. */
-function collectGlobalWatchedPackages(
+/**
+ * Paquetes con versión del inventario de apps para OSV.
+ * Si `techFilter` tiene ids, solo apps cuyo stack incluye alguna de esas tecnologías.
+ */
+function collectWatchedPackagesForTechs(
   options: Array<{ id: string; entry: Parameters<typeof resolveAppStackCached>[1] }>,
   cap: number,
+  techFilter: string[] | null,
 ): WatchedPackage[] {
+  const techSet = techFilter && techFilter.length > 0 ? new Set(techFilter) : null
   const map = new Map<string, WatchedPackage>()
   for (const option of options) {
     const stack = resolveAppStackCached(option.id, option.entry)
+    if (techSet && !stack.techIds.some((techId) => techSet.has(techId))) continue
     for (const pkg of stack.watchedPackages) {
       if (!pkg.version) continue
       const key = packageKeyOf(pkg.ecosystem, pkg.name, pkg.version)
@@ -173,7 +179,7 @@ function corpusSourceHealth(
 export function useCves() {
   const { config } = useSourcesConfig()
   const { options: appOptions } = useAppsConfig()
-  const { days, sources, refreshMin, selectedAppId } = useFilters()
+  const { days, sources, refreshMin, selectedAppId, techAll, technologies } = useFilters()
   const interval = refreshMin > 0 ? refreshMin * 60_000 : CORPUS_REFRESH_MS
   const enrichmentOpts = { refetchInterval: interval, staleTime: CORPUS_REFRESH_MS, retry: 1 } as const
 
@@ -190,10 +196,11 @@ export function useCves() {
     if (selectedAppId && appStack) {
       return mergeWatchedPackages(fromConfig, appStack.watchedPackages)
     }
-    // Vista global: OSV cruza un muestreo del inventario de apps (no quedarse en 0).
-    const fromApps = collectGlobalWatchedPackages(appOptions, OSV_GLOBAL_PACKAGE_CAP)
+    // Vista global / por tecnología: OSV usa paquetes de apps del stack filtrado.
+    const techFilter = !techAll && technologies.length > 0 ? technologies : null
+    const fromApps = collectWatchedPackagesForTechs(appOptions, OSV_GLOBAL_PACKAGE_CAP, techFilter)
     return mergeWatchedPackages(fromConfig, fromApps)
-  }, [config.watchedPackages, appStack, selectedAppId, appOptions])
+  }, [config.watchedPackages, appStack, selectedAppId, appOptions, techAll, technologies])
   const watchedPackagesKey = useMemo(
     () => fingerprintIds(watchedPackages.map((pkg) => packageKeyOf(pkg.ecosystem, pkg.name, pkg.version))),
     [watchedPackages],
@@ -336,9 +343,13 @@ export function useCves() {
         osvOn ? packageHits.reduce((sum, hit) => sum + hit.vulnIds.length, 0) : 0,
         osvMeta?.baseUrl,
         osvFilterOn && !osvOn
-          ? 'Sin paquetes con versión en el inventario'
+          ? (!techAll && technologies.length > 0
+            ? 'Sin paquetes con versión para esas tecnologías'
+            : 'Sin paquetes con versión en el inventario')
           : osvOn
-            ? `${watchedPackages.length} paquetes vigilados`
+            ? (!techAll && technologies.length > 0
+              ? `${watchedPackages.length} paquetes · filtro tech`
+              : `${watchedPackages.length} paquetes vigilados`)
             : undefined,
       ),
       corpusSourceHealth(snapshot, 'euvd', euvdMeta?.label ?? 'EUVD', euvdMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(euvdMeta?.enabled)),
@@ -362,7 +373,7 @@ export function useCves() {
     ]
   }, [
     corpus.data, osvHits, epss, osvOn, osvFilterOn, watchedPackages.length, epssConfigOn, epssIds.length,
-    sources, packageHits,
+    sources, packageHits, techAll, technologies,
     nvdMeta, ghMeta, cveorgMeta, wordfenceMeta, osvMeta, euvdMeta, kevMeta, vulncheckMeta, epssMeta,
     reloadCorpus,
   ])
