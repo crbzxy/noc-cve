@@ -19,6 +19,7 @@ import { HeaderClock } from './components/HeaderClock'
 import { KpiRow } from './components/KpiRow'
 import { LibraryRiskPanel } from './components/LibraryRiskPanel'
 import { SearchBox } from './components/SearchBox'
+import { SourceConnectionLogs } from './components/SourceConnectionLogs'
 import { SourceHealthPill, SourceStatus } from './components/SourceStatus'
 
 const SeverityTimeline = lazy(async () => {
@@ -103,6 +104,7 @@ export default function App() {
   const [chartsOpen, setChartsOpen] = useState(() => readBooleanStorage(CHARTS_STORAGE_KEY, false))
   const [tableOpen, setTableOpen] = useState(() => readBooleanStorage(TABLE_STORAGE_KEY, true))
   const [libsOpen, setLibsOpen] = useState(() => readBooleanStorage(LIBS_STORAGE_KEY, true))
+  const [connectionLogsOpen, setConnectionLogsOpen] = useState(false)
   const [isFilterPending, startFilterTransition] = useTransition()
   const viewsPending = deferredRecords !== records || isFilterPending || libraryRiskLoading
 
@@ -151,7 +153,20 @@ export default function App() {
         }}
       >
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', px: 3, height: '100%' }}>
-          <ShieldOutlinedIcon color="primary" sx={{ fontSize: 22 }} />
+          <Tooltip title="Doble clic: ver logs de por qué no conectan las fuentes">
+            <IconButton
+              size="small"
+              color="primary"
+              aria-label="Logs de conexión de fuentes"
+              onDoubleClick={() => {
+                setConnectionLogsOpen(true)
+                setSidebarOpen(true)
+              }}
+              sx={{ p: 0.5 }}
+            >
+              <ShieldOutlinedIcon sx={{ fontSize: 22 }} />
+            </IconButton>
+          </Tooltip>
           <Typography
             component="h1"
             sx={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', whiteSpace: 'nowrap', pr: 1 }}
@@ -405,6 +420,12 @@ export default function App() {
           />
         </Box>
       </Box>
+
+      <SourceConnectionLogs
+        open={connectionLogsOpen}
+        health={health}
+        onClose={() => setConnectionLogsOpen(false)}
+      />
     </Box>
   )
 }
