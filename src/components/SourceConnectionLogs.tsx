@@ -1,8 +1,9 @@
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import {
   Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, Stack, Tooltip, Typography,
 } from '@mui/material'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { SourceHealth } from '../hooks/useCves'
 import { BORDER, SURFACE_SUNKEN } from '../theme'
 
@@ -15,6 +16,40 @@ function buildLogsText(health: SourceHealth[]): string {
     return `[${status}] ${source.label}${count}${url}${error}`
   })
   return lines.join('\n\n')
+}
+
+/** Fallback para HTTP (QA): Clipboard API solo funciona en contexto seguro. */
+function copyTextWithExecCommand(text: string): boolean {
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.left = '-9999px'
+  area.style.top = '0'
+  document.body.appendChild(area)
+  area.focus()
+  area.select()
+  area.setSelectionRange(0, area.value.length)
+  let ok = false
+  try {
+    ok = document.execCommand('copy')
+  } catch {
+    ok = false
+  }
+  document.body.removeChild(area)
+  return ok
+}
+
+async function copyLogsText(text: string): Promise<boolean> {
+  if (window.isSecureContext && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {
+      // cae al fallback
+    }
+  }
+  return copyTextWithExecCommand(text)
 }
 
 function SourceLogBlock({ source }: { source: SourceHealth }) {
@@ -69,15 +104,20 @@ export function SourceConnectionLogs({
 }) {
   const [copied, setCopied] = useState(false)
   const failing = health.filter((source) => source.status === 'error')
+  const visible = failing.length > 0 ? failing : health
+
+  useEffect(() => {
+    if (!open) setCopied(false)
+  }, [open])
 
   const copyLogs = async () => {
-    try {
-      await navigator.clipboard.writeText(buildLogsText(health))
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1600)
-    } catch {
+    const ok = await copyLogsText(buildLogsText(visible))
+    if (!ok) {
       setCopied(false)
+      return
     }
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -92,16 +132,23 @@ export function SourceConnectionLogs({
                 : 'Todas las fuentes respondieron sin error de red'}
             </Typography>
           </Box>
-          <Tooltip title={copied ? 'Copiado' : 'Copiar logs'}>
-            <IconButton size="small" onClick={() => void copyLogs()} aria-label="Copiar logs">
-              <ContentCopyIcon fontSize="small" />
+          <Tooltip title={copied ? 'Copiado al portapapeles' : 'Copiar logs'}>
+            <IconButton
+              size="small"
+              color={copied ? 'success' : 'default'}
+              onClick={() => void copyLogs()}
+              aria-label={copied ? 'Logs copiados' : 'Copiar logs'}
+            >
+              {copied
+                ? <CheckCircleIcon fontSize="small" color="success" />
+                : <ContentCopyIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
         </Stack>
       </DialogTitle>
       <Divider />
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 2 }}>
-        {(failing.length > 0 ? failing : health).map((source) => (
+        {visible.map((source) => (
           <SourceLogBlock key={source.id} source={source} />
         ))}
         {failing.length > 0 && failing.length < health.length && (
@@ -111,6 +158,13 @@ export function SourceConnectionLogs({
         )}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button
+          onClick={() => void copyLogs()}
+          color={copied ? 'success' : 'primary'}
+          startIcon={copied ? <CheckCircleIcon /> : <ContentCopyIcon />}
+        >
+          {copied ? 'Copiado' : 'Copiar logs'}
+        </Button>
         <Button onClick={onClose} variant="contained">Cerrar</Button>
       </DialogActions>
     </Dialog>
