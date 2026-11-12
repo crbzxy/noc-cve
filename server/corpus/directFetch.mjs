@@ -53,13 +53,38 @@ function rewriteUrl(urlString) {
   return null
 }
 
-let installed = false
+const GLOBAL_FETCH_KEY = '__nocCorpusDirectFetchInstalled'
+const DEFAULT_UPSTREAM_TIMEOUT_MS = 15_000
+
+function upstreamTimeoutMs() {
+  const raw = Number(process.env.UPSTREAM_TIMEOUT_MS ?? DEFAULT_UPSTREAM_TIMEOUT_MS)
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_UPSTREAM_TIMEOUT_MS
+}
+
+function mergeAbortSignals(userSignal, timeoutSignal) {
+  if (!userSignal) return timeoutSignal
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.any === 'function') {
+    return AbortSignal.any([userSignal, timeoutSignal])
+  }
+  const controller = new AbortController()
+  const forward = (signal) => {
+    if (signal.aborted) {
+      controller.abort(signal.reason)
+      return
+    }
+    signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true })
+  }
+  forward(userSignal)
+  forward(timeoutSignal)
+  return controller.signal
+}
 
 /** Instala fetch directo a fuentes; devuelve el origin interno a usar como CORPUS_API_BASE. */
 export function installDirectCorpusFetch() {
   loadDotEnv()
-  if (installed) return INTERNAL_ORIGIN
-  installed = true
+  const globals = globalThis
+  if (globals[GLOBAL_FETCH_KEY]) return INTERNAL_ORIGIN
+  globals[GLOBAL_FETCH_KEY] = true
 
   const originalFetch = globalThis.fetch.bind(globalThis)
   globalThis.fetch = async (input, init = {}) => {
@@ -85,10 +110,22 @@ export function installDirectCorpusFetch() {
       }
     })
 
-    return originalFetch(rewritten.target, {
-      ...init,
-      headers,
-    })
+    const timeoutMs = upstreamTimeoutMs()
+    const timeoutSignal = AbortSignal.timeout(timeoutMs)
+    const signal = mergeAbortSignals(init.signal, timeoutSignal)
+
+    try {
+      return await originalFetch(rewritten.target, {
+        ...init,
+        headers,
+        signal,
+      })
+    } catch (error) {
+      if (timeoutSignal.aborted && (!init.signal || !init.signal.aborted)) {
+        throw new Error(`Timeout (${timeoutMs} ms) al consultar ${rewritten.target}`)
+      }
+      throw error
+    }
   }
 
   return INTERNAL_ORIGIN

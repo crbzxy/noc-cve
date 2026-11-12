@@ -74,25 +74,37 @@ async function resolveIngestBundleUrl() {
 
 const REFRESH_MS = Number(process.env.CORPUS_REFRESH_MS ?? 5 * 60_000)
 const WINDOW_DAYS = 90
+const GLOBAL_STATE_KEY = '__nocCorpusStoreState'
+const GLOBAL_STARTED_KEY = '__nocCorpusWorkerStarted'
 
-/** @type {{
+/**
+ * Singleton en globalThis: Vite puede reimportar este módulo y duplicar la ingesta.
+ * @returns {{
  *  status: 'idle' | 'loading' | 'ready' | 'error'
  *  snapshot: null | object
  *  error: string | null
  *  inflight: null | Promise<object>
  *  timer: null | ReturnType<typeof setInterval>
  *  apiBase: string
- * }} */
-const state = {
-  status: 'idle',
-  snapshot: null,
-  error: null,
-  inflight: null,
-  timer: null,
-  apiBase: '',
+ * }}
+ */
+function getState() {
+  const globals = globalThis
+  if (!globals[GLOBAL_STATE_KEY]) {
+    globals[GLOBAL_STATE_KEY] = {
+      status: 'idle',
+      snapshot: null,
+      error: null,
+      inflight: null,
+      timer: null,
+      apiBase: '',
+    }
+  }
+  return globals[GLOBAL_STATE_KEY]
 }
 
 async function loadPersisted() {
+  const state = getState()
   try {
     const raw = await readFile(snapshotPath, 'utf8')
     const parsed = JSON.parse(raw)
@@ -118,6 +130,7 @@ async function persist(snapshot) {
 }
 
 async function runIngest(force = false) {
+  const state = getState()
   if (state.inflight) return state.inflight
 
   state.inflight = (async () => {
@@ -141,15 +154,32 @@ async function runIngest(force = false) {
       state.status = 'ready'
       state.error = null
       await persist(snapshot)
-      const ok = (snapshot.sources ?? []).filter((source) => source.status === 'ok').length
-      const err = (snapshot.sources ?? []).filter((source) => source.status === 'error').length
+      const sources = snapshot.sources ?? []
+      const okSources = sources.filter((source) => source.status === 'ok')
+      const errSources = sources.filter((source) => source.status === 'error')
+      const offSources = sources.filter((source) => source.status === 'off')
+      const formatSource = (source) => {
+        if (source.status === 'ok') {
+          return `${source.label}(${source.count ?? 0})`
+        }
+        const detail = source.error ? `: ${String(source.error).slice(0, 80)}` : ''
+        return `${source.label}${detail}`
+      }
       console.log(
-        `[corpus] Listo · ${snapshot.records.length} CVE · ${snapshot.ingestMs} ms`
-        + ` · fuentes ok ${ok}/error ${err}`
+        `[corpus] Listo · ${snapshot.records.length} CVE en ${snapshot.ingestMs} ms`
         + (snapshot.newCriticalIds?.length
           ? ` · +${snapshot.newCriticalIds.length} CRITICAL nuevos`
           : ''),
       )
+      if (okSources.length > 0) {
+        console.log(`[corpus] OK · ${okSources.map(formatSource).join(' · ')}`)
+      }
+      if (offSources.length > 0) {
+        console.log(`[corpus] Omitidas · ${offSources.map(formatSource).join(' · ')}`)
+      }
+      if (errSources.length > 0) {
+        console.error(`[corpus] Fallaron · ${errSources.map(formatSource).join(' · ')}`)
+      }
       return snapshot
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -167,10 +197,11 @@ async function runIngest(force = false) {
 }
 
 export function getSnapshot() {
-  return state.snapshot
+  return getState().snapshot
 }
 
 export function getHealth() {
+  const state = getState()
   const snapshot = state.snapshot
   return {
     status: state.status,
@@ -194,12 +225,17 @@ export async function refreshCorpus(force = true) {
 export async function startCorpusWorker(options = {}) {
   // apiBase legacy ignorado: siempre fetch directo.
   void options.apiBase
+  const globals = globalThis
+  if (globals[GLOBAL_STARTED_KEY]) return
+  globals[GLOBAL_STARTED_KEY] = true
+
   await loadPersisted()
 
   if (options.ingestOnBoot !== false) {
     void runIngest(false)
   }
 
+  const state = getState()
   if (options.startTimer !== false && REFRESH_MS > 0) {
     if (state.timer) clearInterval(state.timer)
     state.timer = setInterval(() => {
@@ -210,8 +246,10 @@ export async function startCorpusWorker(options = {}) {
 }
 
 export function stopCorpusWorker() {
+  const state = getState()
   if (state.timer) {
     clearInterval(state.timer)
     state.timer = null
   }
+  globalThis[GLOBAL_STARTED_KEY] = false
 }
