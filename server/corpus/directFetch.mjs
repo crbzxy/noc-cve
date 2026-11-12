@@ -54,7 +54,7 @@ function rewriteUrl(urlString) {
 }
 
 const GLOBAL_FETCH_KEY = '__nocCorpusDirectFetchInstalled'
-const DEFAULT_UPSTREAM_TIMEOUT_MS = 15_000
+const DEFAULT_UPSTREAM_TIMEOUT_MS = 60_000
 
 function upstreamTimeoutMs() {
   const raw = Number(process.env.UPSTREAM_TIMEOUT_MS ?? DEFAULT_UPSTREAM_TIMEOUT_MS)

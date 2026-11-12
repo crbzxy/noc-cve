@@ -13,6 +13,9 @@ export const SOURCES = [
   'euvd',
   'vulncheck-kev',
   'wordfence',
+  'msrc',
+  'k8s',
+  'paloalto',
 ] as const
 export type SourceId = (typeof SOURCES)[number]
 

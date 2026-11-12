@@ -104,6 +104,181 @@
       "path": "/api/intelligence/v3/vulnerabilities/production",
       "authEnv": "WORDFENCE_API_KEY",
       "authRequired": true
+    },
+    {
+      "id": "msrc",
+      "label": "Microsoft MSRC (CVRF API v3)",
+      "enabled": true,
+      "role": "list",
+      "format": "cvrf",
+      "tier": 1,
+      "proxyPrefix": "/api/msrc",
+      "baseUrl": "https://api.msrc.microsoft.com",
+      "path": "/cvrf/v3.0",
+      "notes": "Listado: /updates. Documento: /cvrf/{YYYY-Mon}. Alt CSAF provider-metadata."
+    },
+    {
+      "id": "cisco-csaf",
+      "label": "Cisco PSIRT (CSAF)",
+      "enabled": true,
+      "role": "list",
+      "format": "csaf",
+      "tier": 1,
+      "proxyPrefix": "/api/cisco",
+      "baseUrl": "https://www.cisco.com",
+      "path": "/.well-known/csaf/provider-metadata.json",
+      "notes": "Alt openVuln API https://apix.cisco.com/security/advisories/v2 (OAuth client_credentials)"
+    },
+    {
+      "id": "oracle-csaf",
+      "label": "Oracle CPU / CSPU (CSAF)",
+      "enabled": true,
+      "role": "list",
+      "format": "csaf",
+      "tier": 1,
+      "proxyPrefix": "/api/oracle",
+      "baseUrl": "https://www.oracle.com",
+      "path": "/docs/tech/security-alerts/",
+      "notes": "Un JSON por publicación (ej. cspujun2026csaf.json). No hay índice único."
+    },
+    {
+      "id": "k8s",
+      "label": "Kubernetes Official CVE Feed",
+      "enabled": true,
+      "role": "list",
+      "format": "jsonfeed",
+      "tier": 1,
+      "proxyPrefix": "/api/k8s",
+      "baseUrl": "https://kubernetes.io",
+      "path": "/docs/reference/issues-security/official-cve-feed/index.json"
+    },
+    {
+      "id": "suse-csaf",
+      "label": "SUSE CSAF",
+      "enabled": false,
+      "role": "enrich",
+      "format": "csaf",
+      "tier": 1,
+      "proxyPrefix": "/api/suse",
+      "baseUrl": "https://ftp.suse.com",
+      "path": "/pub/projects/security/csaf/"
+    },
+    {
+      "id": "certbund-csaf",
+      "label": "BSI CERT-Bund WID (CSAF, agregador gubernamental)",
+      "enabled": true,
+      "role": "list",
+      "format": "csaf",
+      "tier": 1,
+      "proxyPrefix": "/api/certbund",
+      "baseUrl": "https://wid.cert-bund.de",
+      "path": "/.well-known/csaf/provider-metadata.json",
+      "notes": "No es fabricante; republica Patch Day SAP/SonicWall/Adobe en CSAF."
+    },
+    {
+      "id": "paloalto",
+      "label": "Palo Alto Networks Security Advisories",
+      "enabled": true,
+      "role": "list",
+      "format": "json",
+      "tier": 1,
+      "proxyPrefix": "/api/paloalto",
+      "baseUrl": "https://security.paloaltonetworks.com",
+      "path": "/json",
+      "notes": "Alt RSS: /rss.xml"
+    },
+    {
+      "id": "vmware",
+      "label": "Broadcom / VMware Security Advisories",
+      "enabled": true,
+      "role": "list",
+      "format": "json",
+      "tier": 1,
+      "method": "POST",
+      "proxyPrefix": "/api/vmware",
+      "baseUrl": "https://support.broadcom.com",
+      "path": "/web/ecx/security-advisory/-/securityadvisory/getSecurityAdvisoryList",
+      "notes": "Payload con segment (VC/VT). Feed legado vmware.com/api/vmsa.html probablemente congelado en 2024."
+    },
+    {
+      "id": "jenkins",
+      "label": "Jenkins Update Center warnings",
+      "enabled": true,
+      "role": "match",
+      "format": "json",
+      "tier": 1,
+      "proxyPrefix": "/api/jenkins",
+      "baseUrl": "https://updates.jenkins.io",
+      "path": "/update-center.actual.json",
+      "notes": "Usar .warnings[] (SECURITY-xxx + rangos por plugin)."
+    },
+    {
+      "id": "fortinet",
+      "label": "Fortinet PSIRT (FortiGuard IR)",
+      "enabled": true,
+      "role": "list",
+      "format": "rss",
+      "tier": 2,
+      "proxyPrefix": "/api/fortinet",
+      "baseUrl": "https://filestore.fortinet.com",
+      "path": "/fortiguard/rss/ir.xml"
+    },
+    {
+      "id": "ivanti",
+      "label": "Ivanti Security Advisories",
+      "enabled": true,
+      "role": "list",
+      "format": "rss",
+      "tier": 2,
+      "proxyPrefix": "/api/ivanti",
+      "baseUrl": "https://www.ivanti.com",
+      "path": "/blog/topics/security-advisory/rss"
+    },
+    {
+      "id": "nodejs",
+      "label": "Node.js Vulnerability Reports",
+      "enabled": true,
+      "role": "list",
+      "format": "rss",
+      "tier": 2,
+      "proxyPrefix": "/api/nodejs",
+      "baseUrl": "https://nodejs.org",
+      "path": "/en/feed/vulnerability.xml"
+    },
+    {
+      "id": "gitlab",
+      "label": "GitLab Patch / Security Releases",
+      "enabled": true,
+      "role": "list",
+      "format": "rss",
+      "tier": 2,
+      "proxyPrefix": "/api/gitlab",
+      "baseUrl": "https://about.gitlab.com",
+      "path": "/security-releases.xml",
+      "notes": "Validar vs https://docs.gitlab.com/releases/patch-releases.xml si se desfasase."
+    },
+    {
+      "id": "aws",
+      "label": "AWS Security Bulletins",
+      "enabled": true,
+      "role": "list",
+      "format": "rss",
+      "tier": 2,
+      "proxyPrefix": "/api/aws",
+      "baseUrl": "https://aws.amazon.com",
+      "path": "/security/security-bulletins/rss/feed/"
+    },
+    {
+      "id": "gcp",
+      "label": "Google Cloud Security Bulletins",
+      "enabled": true,
+      "role": "list",
+      "format": "atom",
+      "tier": 2,
+      "proxyPrefix": "/api/gcp",
+      "baseUrl": "https://docs.cloud.google.com",
+      "path": "/feeds/google-cloud-security-bulletins.xml",
+      "notes": "Alt GKE: /feeds/gke-security-bulletins.xml"
     }
   ],
   "watchedPackages": [],
@@ -138,7 +313,8 @@
         "nvd",
         "cveorg",
         "github",
-        "osv"
+        "osv",
+        "oracle-csaf"
       ]
     },
     {
@@ -238,7 +414,8 @@
         "nvd",
         "cveorg",
         "github",
-        "osv"
+        "osv",
+        "gitlab"
       ]
     },
     {
@@ -261,7 +438,8 @@
         "nvd",
         "cveorg",
         "github",
-        "osv"
+        "osv",
+        "jenkins"
       ]
     },
     {
@@ -569,7 +747,8 @@
         "nvd",
         "cveorg",
         "github",
-        "osv"
+        "osv",
+        "certbund-csaf"
       ]
     },
     {
@@ -616,7 +795,8 @@
         "nvd",
         "cveorg",
         "github",
-        "osv"
+        "osv",
+        "nodejs"
       ]
     },
     {
@@ -919,7 +1099,8 @@
         "nvd",
         "cveorg",
         "github",
-        "osv"
+        "osv",
+        "oracle-csaf"
       ]
     },
     {
@@ -1194,7 +1375,8 @@
       "truthSources": [
         "nvd",
         "cveorg",
-        "github"
+        "github",
+        "certbund-csaf"
       ]
     },
     {
@@ -1259,7 +1441,8 @@
       "truthSources": [
         "nvd",
         "cveorg",
-        "github"
+        "github",
+        "aws"
       ]
     },
     {
@@ -1337,7 +1520,8 @@
         "nvd",
         "cveorg",
         "kev",
-        "vulncheck-kev"
+        "vulncheck-kev",
+        "cisco-csaf"
       ]
     },
     {
@@ -1536,7 +1720,8 @@
         "nvd",
         "cveorg",
         "kev",
-        "vulncheck-kev"
+        "vulncheck-kev",
+        "fortinet"
       ]
     },
     {
@@ -1558,7 +1743,8 @@
       "truthSources": [
         "nvd",
         "cveorg",
-        "github"
+        "github",
+        "gcp"
       ]
     },
     {
@@ -1583,7 +1769,8 @@
         "nvd",
         "cveorg",
         "kev",
-        "vulncheck-kev"
+        "vulncheck-kev",
+        "ivanti"
       ]
     },
     {
@@ -1622,7 +1809,8 @@
         "nvd",
         "cveorg",
         "github",
-        "osv"
+        "osv",
+        "k8s"
       ]
     },
     {
@@ -1655,7 +1843,9 @@
       "truthSources": [
         "nvd",
         "cveorg",
-        "github"
+        "github",
+        "redhat",
+        "suse-csaf"
       ]
     },
     {
@@ -1702,7 +1892,8 @@
       "truthSources": [
         "nvd",
         "cveorg",
-        "github"
+        "github",
+        "msrc"
       ]
     },
     {
@@ -1754,7 +1945,8 @@
         "nvd",
         "cveorg",
         "kev",
-        "vulncheck-kev"
+        "vulncheck-kev",
+        "paloalto"
       ]
     },
     {
@@ -1830,7 +2022,8 @@
         "nvd",
         "cveorg",
         "kev",
-        "vulncheck-kev"
+        "vulncheck-kev",
+        "certbund-csaf"
       ]
     },
     {
@@ -1904,7 +2097,8 @@
         "nvd",
         "cveorg",
         "kev",
-        "vulncheck-kev"
+        "vulncheck-kev",
+        "vmware"
       ]
     },
     {
@@ -1956,7 +2150,9 @@
       "truthSources": [
         "nvd",
         "cveorg",
-        "github"
+        "github",
+        "msrc",
+        "certbund-csaf"
       ]
     },
     {
@@ -2110,5 +2306,18 @@
   "defaults": {
     "sortBy": "risk",
     "sortDir": "desc"
+  },
+  "_nota": "Fuentes oficiales de fabricante/PSIRT verificadas el 2026-11-12. Campos format (json|jsonfeed|csaf|cvrf|rss|atom) y tier (1 estructurado, 2 RSS/Atom). El proxy reenvía; la ingesta al corpus requiere parser por format (pendiente).",
+  "sinFeedOficialVerificado": {
+    "sap": "Solo publica la página mensual del Patch Day en support.sap.com; notas detrás de SAP for Me. Usar CERT-Bund.",
+    "magento": "APSB de Adobe solo en HTML. Adobe es CNA → cveorg; CERT-Bund agrega contexto.",
+    "sonicwall": "Lista web psirt.global.sonicwall.com/vuln-list; sin API documentada.",
+    "citrix": "RSS de support.citrix.com dejó de actualizarse; hoy alertas por correo.",
+    "f5": "RSS personalizado en MyF5 (K9957), con cortes. Opcional.",
+    "checkpoint": "No se encontró feed.",
+    "sophos": "No se encontró feed.",
+    "tomcat/http/kafka": "ASF es CNA; cveorg ya lo cubre.",
+    "linux-kernel": "El kernel es CNA (vulns.git); cveorg ya lo cubre.",
+    "openssl": "Pendiente confirmar URL JSON oficial del fabricante."
   }
 }

@@ -19,6 +19,21 @@ const TRUTH_SOURCE_LABEL: Record<TruthSourceId, string> = {
   kev: 'CISA KEV',
   'vulncheck-kev': 'VulnCheck KEV',
   epss: 'EPSS',
+  msrc: 'MSRC',
+  'cisco-csaf': 'Cisco CSAF',
+  paloalto: 'Palo Alto',
+  'oracle-csaf': 'Oracle CSAF',
+  vmware: 'VMware',
+  k8s: 'Kubernetes',
+  jenkins: 'Jenkins',
+  'suse-csaf': 'SUSE CSAF',
+  'certbund-csaf': 'CERT-Bund',
+  fortinet: 'Fortinet',
+  ivanti: 'Ivanti',
+  nodejs: 'Node.js',
+  gitlab: 'GitLab',
+  aws: 'AWS',
+  gcp: 'GCP',
 }
 
 function formatTruthSources(tech: TechnologyConfig): string | undefined {

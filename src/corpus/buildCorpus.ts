@@ -10,8 +10,11 @@ import { fetchCircl } from '../sources/circl'
 import { fetchCveOrg } from '../sources/cveorg'
 import { fetchEuvd } from '../sources/euvd'
 import { fetchGithub } from '../sources/github'
+import { fetchK8s } from '../sources/k8s'
 import { fetchKev, type KevCatalog } from '../sources/kev'
+import { fetchMsrc } from '../sources/msrc'
 import { fetchNvd } from '../sources/nvd'
+import { fetchPaloAlto } from '../sources/paloalto'
 import { fetchRedHat } from '../sources/redhat'
 import { fetchVulncheckKev, type VulncheckKevCatalog } from '../sources/vulncheckKev'
 import { fetchWordfence } from '../sources/wordfence'
@@ -133,10 +136,13 @@ export async function buildCorpus(options: BuildCorpusOptions): Promise<CorpusSn
   const redhatMeta = findSource(config, 'redhat')
   const wordfenceMeta = findSource(config, 'wordfence')
   const euvdMeta = findSource(config, 'euvd')
+  const msrcMeta = findSource(config, 'msrc')
+  const k8sMeta = findSource(config, 'k8s')
+  const paloaltoMeta = findSource(config, 'paloalto')
   const kevMeta = findSource(config, 'kev')
   const vulncheckMeta = findSource(config, 'vulncheck-kev')
 
-  const [nvd, github, cveorg, circl, redhat, wordfence, euvd] = await Promise.all([
+  const [nvd, github, cveorg, circl, redhat, wordfence, euvd, msrc, k8s, paloalto] = await Promise.all([
     settleList('nvd', nvdMeta?.label ?? 'NVD', sourceRunState(config, 'nvd'), () => fetchNvd(days, options.signal)),
     settleList('github', ghMeta?.label ?? 'GitHub', sourceRunState(config, 'github'), () => fetchGithub(days, options.signal)),
     settleList('cveorg', cveorgMeta?.label ?? 'CVE.org', sourceRunState(config, 'cveorg'), () => fetchCveOrg(days, options.signal)),
@@ -144,6 +150,9 @@ export async function buildCorpus(options: BuildCorpusOptions): Promise<CorpusSn
     settleList('redhat', redhatMeta?.label ?? 'Red Hat', sourceRunState(config, 'redhat'), () => fetchRedHat(days, options.signal)),
     settleList('wordfence', wordfenceMeta?.label ?? 'Wordfence', sourceRunState(config, 'wordfence'), () => fetchWordfence(days, options.signal)),
     settleList('euvd', euvdMeta?.label ?? 'EUVD', sourceRunState(config, 'euvd'), () => fetchEuvd(days, options.signal)),
+    settleList('msrc', msrcMeta?.label ?? 'MSRC', sourceRunState(config, 'msrc'), () => fetchMsrc(days, options.signal)),
+    settleList('k8s', k8sMeta?.label ?? 'Kubernetes', sourceRunState(config, 'k8s'), () => fetchK8s(days, options.signal)),
+    settleList('paloalto', paloaltoMeta?.label ?? 'Palo Alto', sourceRunState(config, 'paloalto'), () => fetchPaloAlto(days, options.signal)),
   ])
 
   const kevLabel = kevMeta?.label ?? 'CISA KEV'
@@ -207,7 +216,18 @@ export async function buildCorpus(options: BuildCorpusOptions): Promise<CorpusSn
   const updatedAt = Date.now()
   const aggregated = aggregate({
     days,
-    lists: [nvd.list, github.list, cveorg.list, circl.list, redhat.list, wordfence.list, euvd.list],
+    lists: [
+      nvd.list,
+      github.list,
+      cveorg.list,
+      circl.list,
+      redhat.list,
+      wordfence.list,
+      euvd.list,
+      msrc.list,
+      k8s.list,
+      paloalto.list,
+    ],
     kev,
     vulncheckKev,
   })
@@ -275,6 +295,30 @@ export async function buildCorpus(options: BuildCorpusOptions): Promise<CorpusSn
       count: euvd.enabled ? euvd.list.length : undefined,
       error: euvd.error ?? euvd.offReason,
       updatedAt: euvd.enabled && !euvd.error ? updatedAt : undefined,
+    },
+    {
+      id: 'msrc',
+      label: msrc.label,
+      status: !msrc.enabled ? 'off' : msrc.error ? 'error' : 'ok',
+      count: msrc.enabled ? msrc.list.length : undefined,
+      error: msrc.error ?? msrc.offReason,
+      updatedAt: msrc.enabled && !msrc.error ? updatedAt : undefined,
+    },
+    {
+      id: 'k8s',
+      label: k8s.label,
+      status: !k8s.enabled ? 'off' : k8s.error ? 'error' : 'ok',
+      count: k8s.enabled ? k8s.list.length : undefined,
+      error: k8s.error ?? k8s.offReason,
+      updatedAt: k8s.enabled && !k8s.error ? updatedAt : undefined,
+    },
+    {
+      id: 'paloalto',
+      label: paloalto.label,
+      status: !paloalto.enabled ? 'off' : paloalto.error ? 'error' : 'ok',
+      count: paloalto.enabled ? paloalto.list.length : undefined,
+      error: paloalto.error ?? paloalto.offReason,
+      updatedAt: paloalto.enabled && !paloalto.error ? updatedAt : undefined,
     },
     {
       id: 'kev',

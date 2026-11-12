@@ -30,7 +30,7 @@ async function fetchMavenLatest(
   signal?: AbortSignal,
 ): Promise<string | null> {
   const path = mavenPath(groupId, artifactId)
-  const response = await fetch(`/api/maven-central/${path}`, { signal })
+  const response = await fetch(`/api/maven-central/${path}`, { signal, credentials: 'same-origin' })
   if (!response.ok) throw new Error(`Maven ${response.status}`)
   const xml = await response.text()
   return parseMavenLatest(xml)
@@ -40,7 +40,10 @@ async function fetchNpmLatest(name: string, signal?: AbortSignal): Promise<{
   latest: string | null
   lts: string | null
 }> {
-  const response = await fetch(`/api/npm-registry/${encodeURIComponent(name)}`, { signal })
+  const response = await fetch(`/api/npm-registry/${encodeURIComponent(name)}`, {
+    signal,
+    credentials: 'same-origin',
+  })
   if (!response.ok) throw new Error(`npm ${response.status}`)
   const data = await response.json() as {
     'dist-tags'?: Record<string, string>
@@ -53,7 +56,10 @@ async function fetchNpmLatest(name: string, signal?: AbortSignal): Promise<{
 }
 
 async function fetchPypiLatest(name: string, signal?: AbortSignal): Promise<string | null> {
-  const response = await fetch(`/api/pypi/${encodeURIComponent(name)}/json`, { signal })
+  const response = await fetch(`/api/pypi/${encodeURIComponent(name)}/json`, {
+    signal,
+    credentials: 'same-origin',
+  })
   if (!response.ok) throw new Error(`PyPI ${response.status}`)
   const data = await response.json() as { info?: { version?: string } }
   return data.info?.version ?? null
@@ -65,7 +71,10 @@ async function fetchGoLatest(modulePath: string, signal?: AbortSignal): Promise<
     .split('/')
     .map((segment) => encodeURIComponent(segment))
     .join('/')
-  const response = await fetch(`/api/go-proxy/${encoded}/@latest`, { signal })
+  const response = await fetch(`/api/go-proxy/${encoded}/@latest`, {
+    signal,
+    credentials: 'same-origin',
+  })
   if (!response.ok) throw new Error(`Go ${response.status}`)
   const data = await response.json() as { Version?: string }
   return data.Version ?? null

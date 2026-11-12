@@ -75,6 +75,9 @@ const FORTIGUARD_HOSTS = [
   'www.cisa.gov',
   'api.vulncheck.com',
   'api.first.org',
+  'api.msrc.microsoft.com',
+  'kubernetes.io',
+  'security.paloaltonetworks.com',
 ].join(', ')
 
 type SourceHint = {
@@ -256,7 +259,10 @@ async function parseJsonBody<T>(res: Response): Promise<T> {
   }
 }
 
-/** Base absoluta para ingesta Node (CORPUS_API_BASE); vacío en el browser. */
+/**
+ * Base absoluta solo para ingesta Node (`CORPUS_API_BASE` → directFetch).
+ * En el browser siempre same-origin (paths `/api/...`).
+ */
 export function getApiBase(): string {
   const runtime = globalThis as { process?: { env?: Record<string, string | undefined> } }
   const value = runtime.process?.env?.CORPUS_API_BASE
@@ -266,13 +272,13 @@ export function getApiBase(): string {
 function resolveUrl(url: string): string {
   if (url.startsWith('http://') || url.startsWith('https://')) return url
   const base = getApiBase()
-  return base ? `${base}${url}` : url
+  return base ? `${base}${url.startsWith('/') ? url : `/${url}`}` : url
 }
 
 export async function getJson<T>(url: string, signal?: AbortSignal): Promise<{ data: T; headers: Headers }> {
   const resolved = resolveUrl(url)
   try {
-    const res = await fetch(resolved, { signal })
+    const res = await fetch(resolved, { signal, credentials: 'same-origin' })
     if (!res.ok) {
       throw new HttpError(res.status, await readErrorMessage(res, resolved))
     }
@@ -295,6 +301,7 @@ export async function postJson<T>(
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(body),
       signal,
+      credentials: 'same-origin',
     })
     if (!res.ok) {
       throw new HttpError(res.status, await readErrorMessage(res, resolved))

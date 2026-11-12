@@ -66,7 +66,7 @@ async function resolveIngestBundleUrl() {
   const generated = findIngestBundlePath()
   if (!generated) {
     throw new Error(
-      'No está ingest.bundle.mjs tras bundle:corpus. Revisa que Vite esté instalado en el server.',
+      'No está ingest.bundle.mjs tras bundle:corpus. Ejecuta npm run bundle:corpus en el build.',
     )
   }
   return pathToFileURL(generated).href

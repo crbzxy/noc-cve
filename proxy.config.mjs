@@ -33,10 +33,27 @@ function bearerFromEnv(env, authEnv) {
   return token ? `Bearer ${token}` : undefined
 }
 
+function acceptForFormat(format) {
+  switch (format) {
+    case 'rss':
+      return 'application/rss+xml, application/xml;q=0.9, */*;q=0.8'
+    case 'atom':
+      return 'application/atom+xml, application/xml;q=0.9, */*;q=0.8'
+    case 'cvrf':
+      // API v3 de MSRC es JSON; pedir XML hace que responda CVRF XML.
+      return 'application/json'
+    case 'csaf':
+    case 'jsonfeed':
+    case 'json':
+    default:
+      return 'application/json'
+  }
+}
+
 function headersFor(source) {
   return (env) => {
     const base = {
-      Accept: 'application/json',
+      Accept: acceptForFormat(source.format),
       'User-Agent': 'noc-cve-dashboard',
     }
     if (source.id === 'github') {

@@ -36,7 +36,6 @@ export function ExpandableModule({
     <Paper
       id={id}
       sx={{
-        minHeight: 0,
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
@@ -44,8 +43,8 @@ export function ExpandableModule({
         ...(open && fixedHeight
           ? { minHeight: fixedHeight + 40 }
           : open
-            ? { height: '100%' }
-            : { height: 'auto' }),
+            ? { minHeight: 0, height: '100%' }
+            : { minHeight: 0, height: 'auto' }),
       }}
     >
       <Stack

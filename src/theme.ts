@@ -177,36 +177,59 @@ export const theme = createTheme({
         [`[${SCHEME_ATTRIBUTE}="light"]`]: tokenDeclarations('light'),
         html: {
           scrollbarWidth: 'thin',
-          scrollbarColor: `${PRIMARY} ${SURFACE}`,
+          scrollbarColor: `${BORDER_STRONG} transparent`,
         },
         body: {
           scrollbarWidth: 'thin',
-          scrollbarColor: `${PRIMARY} ${SURFACE}`,
+          scrollbarColor: `${BORDER_STRONG} transparent`,
         },
         '*::-webkit-scrollbar': {
-          width: 10,
-          height: 10,
+          width: 6,
+          height: 6,
         },
         '*::-webkit-scrollbar-track': {
-          backgroundColor: SURFACE,
-          borderRadius: 8,
+          backgroundColor: 'transparent',
         },
         '*::-webkit-scrollbar-thumb': {
-          backgroundColor: PRIMARY,
-          borderRadius: 8,
-          border: `2px solid ${SURFACE}`,
+          backgroundColor: BORDER_STRONG,
+          borderRadius: 999,
+          border: 'none',
+          backgroundClip: 'padding-box',
         },
         '*::-webkit-scrollbar-thumb:hover': {
-          backgroundColor: cssVar('primaryHover'),
+          backgroundColor: TEXT_SECONDARY,
         },
         '*::-webkit-scrollbar-thumb:active': {
-          backgroundColor: cssVar('primaryActive'),
+          backgroundColor: TEXT_SECONDARY,
         },
-        // Quita los triángulos/flechas del scrollbar
+        // Sin flechas/picos (Chromium/Windows)
         '*::-webkit-scrollbar-button': {
           display: 'none',
           width: 0,
           height: 0,
+          appearance: 'none',
+          background: 'transparent',
+        },
+        '*::-webkit-scrollbar-button:single-button': {
+          display: 'none',
+          width: 0,
+          height: 0,
+        },
+        '*::-webkit-scrollbar-button:vertical:start:decrement': {
+          display: 'none',
+          height: 0,
+        },
+        '*::-webkit-scrollbar-button:vertical:end:increment': {
+          display: 'none',
+          height: 0,
+        },
+        '*::-webkit-scrollbar-button:horizontal:start:decrement': {
+          display: 'none',
+          width: 0,
+        },
+        '*::-webkit-scrollbar-button:horizontal:end:increment': {
+          display: 'none',
+          width: 0,
         },
         '*::-webkit-scrollbar-corner': {
           backgroundColor: 'transparent',

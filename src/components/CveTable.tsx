@@ -30,6 +30,9 @@ const SOURCE_SHORT: Record<SourceId, string> = {
   euvd: 'EUVD',
   'vulncheck-kev': 'VCKEV',
   wordfence: 'WF',
+  msrc: 'MSRC',
+  k8s: 'K8S',
+  paloalto: 'PAN',
 }
 
 const sorters: Record<Exclude<SortKey, 'risk'>, (a: CveRecord, b: CveRecord) => number> = {

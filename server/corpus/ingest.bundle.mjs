@@ -110,6 +110,39 @@ var TRUTH_SOURCES = [
 		path: "/api/intelligence/v3/vulnerabilities/production",
 		authEnv: "WORDFENCE_API_KEY",
 		authRequired: true
+	},
+	{
+		id: "msrc",
+		label: "Microsoft MSRC (CVRF API v3)",
+		enabled: true,
+		role: "list",
+		format: "cvrf",
+		tier: 1,
+		proxyPrefix: "/api/msrc",
+		baseUrl: "https://api.msrc.microsoft.com",
+		path: "/cvrf/v3.0"
+	},
+	{
+		id: "k8s",
+		label: "Kubernetes Official CVE Feed",
+		enabled: true,
+		role: "list",
+		format: "jsonfeed",
+		tier: 1,
+		proxyPrefix: "/api/k8s",
+		baseUrl: "https://kubernetes.io",
+		path: "/docs/reference/issues-security/official-cve-feed/index.json"
+	},
+	{
+		id: "paloalto",
+		label: "Palo Alto Networks Security Advisories",
+		enabled: true,
+		role: "list",
+		format: "json",
+		tier: 1,
+		proxyPrefix: "/api/paloalto",
+		baseUrl: "https://security.paloaltonetworks.com",
+		path: "/json"
 	}
 ];
 var FALLBACK_SOURCES_CONFIG = {
@@ -200,7 +233,10 @@ var FORTIGUARD_HOSTS = [
 	"euvdservices.enisa.europa.eu",
 	"www.cisa.gov",
 	"api.vulncheck.com",
-	"api.first.org"
+	"api.first.org",
+	"api.msrc.microsoft.com",
+	"kubernetes.io",
+	"security.paloaltonetworks.com"
 ].join(", ");
 var SOURCE_HINTS = [
 	{
@@ -345,7 +381,10 @@ async function parseJsonBody(res) {
 		throw new HttpError(res.status || 502, "No se pudo parsear la respuesta JSON del upstream");
 	}
 }
-/** Base absoluta para ingesta Node (CORPUS_API_BASE); vacío en el browser. */
+/**
+* Base absoluta solo para ingesta Node (`CORPUS_API_BASE` → directFetch).
+* En el browser siempre same-origin (paths `/api/...`).
+*/
 function getApiBase() {
 	const value = globalThis.process?.env?.CORPUS_API_BASE;
 	return typeof value === "string" ? value.replace(/\/$/, "") : "";
@@ -353,12 +392,15 @@ function getApiBase() {
 function resolveUrl(url) {
 	if (url.startsWith("http://") || url.startsWith("https://")) return url;
 	const base = getApiBase();
-	return base ? `${base}${url}` : url;
+	return base ? `${base}${url.startsWith("/") ? url : `/${url}`}` : url;
 }
 async function getJson(url, signal) {
 	const resolved = resolveUrl(url);
 	try {
-		const res = await fetch(resolved, { signal });
+		const res = await fetch(resolved, {
+			signal,
+			credentials: "same-origin"
+		});
 		if (!res.ok) throw new HttpError(res.status, await readErrorMessage(res, resolved));
 		return {
 			data: await parseJsonBody(res),
@@ -379,7 +421,8 @@ async function postJson(url, body, signal) {
 				Accept: "application/json"
 			},
 			body: JSON.stringify(body),
-			signal
+			signal,
+			credentials: "same-origin"
 		});
 		if (!res.ok) throw new HttpError(res.status, await readErrorMessage(res, resolved));
 		return {
@@ -591,7 +634,7 @@ function pickMetric$2(container) {
 	}
 	return {};
 }
-function pickDescription$1(container) {
+function pickDescription$2(container) {
 	const list = container?.descriptions ?? [];
 	return list.find((item) => item.lang?.startsWith("en"))?.value ?? list[0]?.value ?? "";
 }
@@ -625,7 +668,7 @@ function mapCveRecord(record) {
 	return {
 		id,
 		title: cna?.title,
-		description: pickDescription$1(cna),
+		description: pickDescription$2(cna),
 		severity: normalizeSeverity(metric.sev),
 		cvss: metric.score,
 		cvssVersion: metric.version,
@@ -666,11 +709,11 @@ function mapOsvLike(item) {
 function isCveRecord(item) {
 	return "cveMetadata" in item || "dataType" in item && item.dataType === "CVE_RECORD";
 }
-function mapItem$2(item) {
+function mapItem$3(item) {
 	if (isCveRecord(item)) return mapCveRecord(item);
 	return mapOsvLike(item);
 }
-function inWindow$1(iso, sinceIso) {
+function inWindow$2(iso, sinceIso) {
 	if (!iso) return false;
 	return iso >= sinceIso;
 }
@@ -687,11 +730,11 @@ async function fetchCircl(days, signal) {
 			sort_order: "desc",
 			since: sinceDate
 		})}`, signal);
-		const rows = (Array.isArray(data) ? data : []).map(mapItem$2).filter((row) => Boolean(row));
+		const rows = (Array.isArray(data) ? data : []).map(mapItem$3).filter((row) => Boolean(row));
 		if (rows.length === 0) break;
 		let olderThanWindow = 0;
 		for (const row of rows) {
-			if (!inWindow$1(row.published, sinceIso) && !inWindow$1(row.modified, sinceIso)) {
+			if (!inWindow$2(row.published, sinceIso) && !inWindow$2(row.modified, sinceIso)) {
 				olderThanWindow += 1;
 				continue;
 			}
@@ -718,7 +761,7 @@ function pickMetric$1(container) {
 	}
 	return {};
 }
-function pickDescription(container) {
+function pickDescription$1(container) {
 	const list = container?.descriptions ?? [];
 	return list.find((item) => item.lang?.startsWith("en"))?.value ?? list[0]?.value ?? "";
 }
@@ -734,7 +777,7 @@ function mapRecord(record) {
 	return {
 		id,
 		title: cna?.title,
-		description: pickDescription(cna),
+		description: pickDescription$1(cna),
 		severity: normalizeSeverity(metric.sev),
 		cvss: metric.score,
 		cvssVersion: metric.version,
@@ -752,7 +795,7 @@ function yearQueries(days) {
 	const start = daysAgo(days);
 	return [.../* @__PURE__ */ new Set([start.getUTCFullYear(), end.getUTCFullYear()])].map((year) => `CVE-${year}`);
 }
-function inWindow(published, sinceIso) {
+function inWindow$1(published, sinceIso) {
 	if (!published) return false;
 	return published >= sinceIso;
 }
@@ -779,7 +822,7 @@ async function fetchCveOrg(days, signal) {
 		const data = await searchPage(query, from, signal);
 		const rows = (data.results ?? []).map(mapRecord).filter((row) => Boolean(row));
 		for (const row of rows) {
-			if (!inWindow(row.published, sinceIso) && !inWindow(row.modified, sinceIso)) continue;
+			if (!inWindow$1(row.published, sinceIso) && !inWindow$1(row.modified, sinceIso)) continue;
 			out.set(row.id, row);
 		}
 		const total = totalFrom(data);
@@ -811,7 +854,7 @@ function severityFromScore(score) {
 	if (score > 0) return "LOW";
 	return "NONE";
 }
-function mapItem$1(item) {
+function mapItem$2(item) {
 	const aliases = parseAliases(item.aliases);
 	const id = aliases.find((alias) => alias.startsWith("CVE-")) ?? item.id;
 	if (!id) return null;
@@ -844,7 +887,7 @@ async function fetchEuvd(days, signal) {
 			size: String(PAGE_SIZE$1),
 			page: String(page)
 		})}`, signal);
-		const rows = (data.items ?? []).map(mapItem$1).filter((row) => Boolean(row));
+		const rows = (data.items ?? []).map(mapItem$2).filter((row) => Boolean(row));
 		out.push(...rows);
 		const total = data.total ?? 0;
 		if ((page + 1) * PAGE_SIZE$1 >= total || rows.length === 0) break;
@@ -898,6 +941,55 @@ async function fetchGithub(days, signal) {
 	}
 	return out;
 }
+// src/sources/k8s.ts
+function parseCvss(content) {
+	if (!content) return {};
+	const rating = content.match(/CVSS Rating:\s*\*\*([0-9.]+)\*\*\s*\((\w+)\)/i);
+	const vector = content.match(/CVSS:(\d+(?:\.\d+)?)\/[A-Z0-9:/]+/i);
+	return {
+		score: rating ? Number(rating[1]) : void 0,
+		severity: rating?.[2],
+		version: vector?.[1]
+	};
+}
+function parsePackages(content, summary) {
+	const text = `${summary ?? ""}\n${content ?? ""}`;
+	const packages = /* @__PURE__ */ new Set(["kubernetes:kubernetes"]);
+	if (/ingress-nginx/i.test(text)) packages.add("kubernetes:ingress-nginx");
+	if (/kubelet/i.test(text)) packages.add("kubernetes:kubelet");
+	if (/kube-apiserver/i.test(text)) packages.add("kubernetes:kube-apiserver");
+	if (/kubectl/i.test(text)) packages.add("kubernetes:kubectl");
+	return [...packages];
+}
+function mapItem$1(item, sinceMs) {
+	const id = item.id;
+	if (!id?.startsWith("CVE-")) return null;
+	if (item.date_published) {
+		const stamp = Date.parse(item.date_published);
+		if (Number.isFinite(stamp) && stamp < sinceMs) return null;
+	}
+	const cvss = parseCvss(item.content_text);
+	const description = (item.content_text ?? "").replace(/```[\s\S]*?```/g, " ").replace(/\s+/g, " ").trim().slice(0, 2e3);
+	return {
+		id,
+		title: item.summary,
+		description,
+		severity: normalizeSeverity(cvss.severity),
+		cvss: Number.isFinite(cvss.score) ? cvss.score : void 0,
+		cvssVersion: cvss.version,
+		published: item.date_published,
+		status: item.status,
+		packages: parsePackages(item.content_text, item.summary),
+		cwes: [],
+		references: [item.url, item.external_url].filter((url) => Boolean(url)),
+		sources: ["k8s"]
+	};
+}
+async function fetchK8s(days, signal) {
+	const sinceMs = daysAgo(days).getTime();
+	const { data } = await getJson("/api/k8s", signal);
+	return (data.items ?? []).map((item) => mapItem$1(item, sinceMs)).filter((row) => Boolean(row));
+}
 // src/sources/kev.ts
 async function fetchKev(signal) {
 	const { data } = await getJson("/api/kev", signal);
@@ -918,6 +1010,72 @@ async function fetchKev(signal) {
 		version: data.catalogVersion,
 		byId
 	};
+}
+// src/sources/msrc.ts
+var MAX_UPDATES = 4;
+function stripHtml(value) {
+	return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+function mapMsSeverity(raw) {
+	if (!raw) return void 0;
+	const key = raw.toLowerCase();
+	if (key === "critical") return "CRITICAL";
+	if (key === "important") return "HIGH";
+	if (key === "moderate") return "MEDIUM";
+	if (key === "low") return "LOW";
+	return raw.toUpperCase();
+}
+function pickDescription(notes) {
+	const description = notes?.find((note) => note.Type === 2 || note.Title === "Description");
+	return description?.Value ? stripHtml(description.Value) : "";
+}
+function pickSeverity(threats) {
+	const threat = threats?.find((item) => item.Type === 3 && item.Description?.Value);
+	return mapMsSeverity(threat?.Description?.Value);
+}
+function pickPublished(vuln) {
+	return (vuln.RevisionHistory ?? []).map((row) => row.Date).filter((value) => Boolean(value && !value.startsWith("0001"))).sort()[0];
+}
+function mapVulnerability(vuln) {
+	const id = vuln.CVE;
+	if (!id?.startsWith("CVE-")) return null;
+	const score = vuln.CVSSScoreSets?.[0];
+	const version = score?.Vector?.match(/^CVSS:(\d+(?:\.\d+)?)/i)?.[1];
+	const products = (vuln.Notes ?? []).filter((note) => note.Type === 7 && note.Value).map((note) => `microsoft:${note.Value.trim()}`);
+	return {
+		id,
+		title: vuln.Title?.Value,
+		description: pickDescription(vuln.Notes),
+		severity: normalizeSeverity(pickSeverity(vuln.Threats)),
+		cvss: score?.BaseScore,
+		cvssVersion: version,
+		published: pickPublished(vuln),
+		packages: [...new Set(products)],
+		cwes: [...new Set((vuln.CWE ?? []).map((row) => row.ID).filter((cwe) => Boolean(cwe?.startsWith("CWE-"))))],
+		references: [...new Set((vuln.Remediations ?? []).map((row) => row.URL).filter((url) => Boolean(url)))],
+		sources: ["msrc"]
+	};
+}
+function updatesInWindow(updates, days) {
+	const since = daysAgo(days).getTime();
+	return updates.filter((update) => {
+		if (!update.ID || !update.InitialReleaseDate) return false;
+		const stamp = Date.parse(update.InitialReleaseDate);
+		return Number.isFinite(stamp) && stamp >= since;
+	}).sort((left, right) => String(right.InitialReleaseDate).localeCompare(String(left.InitialReleaseDate))).slice(0, MAX_UPDATES);
+}
+async function fetchMsrc(days, signal) {
+	const { data } = await getJson("/api/msrc/updates", signal);
+	const selected = updatesInWindow(data.value ?? [], days);
+	const out = [];
+	for (const update of selected) {
+		const { data: document } = await getJson(`/api/msrc/cvrf/${encodeURIComponent(update.ID)}`, signal);
+		for (const vuln of document.Vulnerability ?? []) {
+			const mapped = mapVulnerability(vuln);
+			if (mapped) out.push(mapped);
+		}
+	}
+	return out;
 }
 // src/sources/nvd.ts
 var PAGE = 2e3;
@@ -976,6 +1134,37 @@ async function fetchNvd(days, signal) {
 		await sleep(6500, signal);
 	}
 	return out;
+}
+// src/sources/paloalto.ts
+function inWindow(advisory, sinceMs) {
+	const stamp = Date.parse(advisory.updated || advisory.date || "");
+	if (!Number.isFinite(stamp)) return true;
+	return stamp >= sinceMs;
+}
+function mapAdvisory(advisory) {
+	const id = advisory.ID;
+	if (!id?.startsWith("CVE-")) return null;
+	const products = [.../* @__PURE__ */ new Set([...advisory.product ?? [], ...advisory.version ?? []])].map((name) => `paloalto:${name}`);
+	const description = [advisory.problem, advisory.solution].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+	return {
+		id,
+		title: advisory.title,
+		description,
+		severity: normalizeSeverity(advisory.baseSeverity || advisory.severity || advisory.threatSeverity),
+		cvss: advisory.baseScore,
+		cvssVersion: advisory.baseScore != null ? "3.1" : void 0,
+		published: advisory.date,
+		modified: advisory.updated,
+		packages: products,
+		cwes: [],
+		references: [`https://security.paloaltonetworks.com/${id}`],
+		sources: ["paloalto"]
+	};
+}
+async function fetchPaloAlto(days, signal) {
+	const sinceMs = daysAgo(days).getTime();
+	const { data } = await getJson("/api/paloalto", signal);
+	return (Array.isArray(data) ? data : []).filter((row) => inWindow(row, sinceMs)).map(mapAdvisory).filter((row) => Boolean(row));
 }
 // src/sources/redhat.ts
 var PAGE_SIZE = 1e3;
@@ -1222,16 +1411,22 @@ async function buildCorpus(options) {
 	const redhatMeta = findSource(config, "redhat");
 	const wordfenceMeta = findSource(config, "wordfence");
 	const euvdMeta = findSource(config, "euvd");
+	const msrcMeta = findSource(config, "msrc");
+	const k8sMeta = findSource(config, "k8s");
+	const paloaltoMeta = findSource(config, "paloalto");
 	const kevMeta = findSource(config, "kev");
 	const vulncheckMeta = findSource(config, "vulncheck-kev");
-	const [nvd, github, cveorg, circl, redhat, wordfence, euvd] = await Promise.all([
+	const [nvd, github, cveorg, circl, redhat, wordfence, euvd, msrc, k8s, paloalto] = await Promise.all([
 		settleList("nvd", nvdMeta?.label ?? "NVD", sourceRunState(config, "nvd"), () => fetchNvd(days, options.signal)),
 		settleList("github", ghMeta?.label ?? "GitHub", sourceRunState(config, "github"), () => fetchGithub(days, options.signal)),
 		settleList("cveorg", cveorgMeta?.label ?? "CVE.org", sourceRunState(config, "cveorg"), () => fetchCveOrg(days, options.signal)),
 		settleList("circl", circlMeta?.label ?? "CIRCL", sourceRunState(config, "circl"), () => fetchCircl(days, options.signal)),
 		settleList("redhat", redhatMeta?.label ?? "Red Hat", sourceRunState(config, "redhat"), () => fetchRedHat(days, options.signal)),
 		settleList("wordfence", wordfenceMeta?.label ?? "Wordfence", sourceRunState(config, "wordfence"), () => fetchWordfence(days, options.signal)),
-		settleList("euvd", euvdMeta?.label ?? "EUVD", sourceRunState(config, "euvd"), () => fetchEuvd(days, options.signal))
+		settleList("euvd", euvdMeta?.label ?? "EUVD", sourceRunState(config, "euvd"), () => fetchEuvd(days, options.signal)),
+		settleList("msrc", msrcMeta?.label ?? "MSRC", sourceRunState(config, "msrc"), () => fetchMsrc(days, options.signal)),
+		settleList("k8s", k8sMeta?.label ?? "Kubernetes", sourceRunState(config, "k8s"), () => fetchK8s(days, options.signal)),
+		settleList("paloalto", paloaltoMeta?.label ?? "Palo Alto", sourceRunState(config, "paloalto"), () => fetchPaloAlto(days, options.signal))
 	]);
 	const kevLabel = kevMeta?.label ?? "CISA KEV";
 	const kevState = sourceRunState(config, "kev");
@@ -1309,7 +1504,10 @@ async function buildCorpus(options) {
 			circl.list,
 			redhat.list,
 			wordfence.list,
-			euvd.list
+			euvd.list,
+			msrc.list,
+			k8s.list,
+			paloalto.list
 		],
 		kev,
 		vulncheckKev
@@ -1377,6 +1575,30 @@ async function buildCorpus(options) {
 				count: euvd.enabled ? euvd.list.length : void 0,
 				error: euvd.error ?? euvd.offReason,
 				updatedAt: euvd.enabled && !euvd.error ? updatedAt : void 0
+			},
+			{
+				id: "msrc",
+				label: msrc.label,
+				status: !msrc.enabled ? "off" : msrc.error ? "error" : "ok",
+				count: msrc.enabled ? msrc.list.length : void 0,
+				error: msrc.error ?? msrc.offReason,
+				updatedAt: msrc.enabled && !msrc.error ? updatedAt : void 0
+			},
+			{
+				id: "k8s",
+				label: k8s.label,
+				status: !k8s.enabled ? "off" : k8s.error ? "error" : "ok",
+				count: k8s.enabled ? k8s.list.length : void 0,
+				error: k8s.error ?? k8s.offReason,
+				updatedAt: k8s.enabled && !k8s.error ? updatedAt : void 0
+			},
+			{
+				id: "paloalto",
+				label: paloalto.label,
+				status: !paloalto.enabled ? "off" : paloalto.error ? "error" : "ok",
+				count: paloalto.enabled ? paloalto.list.length : void 0,
+				error: paloalto.error ?? paloalto.offReason,
+				updatedAt: paloalto.enabled && !paloalto.error ? updatedAt : void 0
 			},
 			{
 				id: "kev",

@@ -1,5 +1,11 @@
 export type SourceRole = 'list' | 'enrich' | 'score' | 'match'
 
+/** Formato del feed upstream; el proxy reenvía; la ingesta necesita parser por formato. */
+export type SourceFormat = 'json' | 'jsonfeed' | 'csaf' | 'cvrf' | 'rss' | 'atom'
+
+/** 1 = estructurado; 2 = RSS/Atom (extraer CVEs del HTML/XML). */
+export type SourceTier = 1 | 2
+
 export interface SourceConfig {
   id: string
   label: string
@@ -11,6 +17,11 @@ export interface SourceConfig {
   authEnv?: string
   /** Si true, sin process.env[authEnv] la fuente queda off (no se llama al upstream). */
   authRequired?: boolean
+  format?: SourceFormat
+  tier?: SourceTier
+  /** Método preferido hacia el upstream (p. ej. POST Broadcom). El proxy reenvía el del cliente. */
+  method?: 'GET' | 'POST'
+  notes?: string
 }
 
 export type TechnologyCategory = 'language' | 'framework'
@@ -28,6 +39,21 @@ export type TruthSourceId =
   | 'kev'
   | 'vulncheck-kev'
   | 'epss'
+  | 'msrc'
+  | 'cisco-csaf'
+  | 'paloalto'
+  | 'oracle-csaf'
+  | 'vmware'
+  | 'k8s'
+  | 'jenkins'
+  | 'suse-csaf'
+  | 'certbund-csaf'
+  | 'fortinet'
+  | 'ivanti'
+  | 'nodejs'
+  | 'gitlab'
+  | 'aws'
+  | 'gcp'
 
 export interface TechnologyConfig {
   id: string
@@ -181,6 +207,39 @@ const TRUTH_SOURCES: SourceConfig[] = [
     path: '/api/intelligence/v3/vulnerabilities/production',
     authEnv: 'WORDFENCE_API_KEY',
     authRequired: true,
+  },
+  {
+    id: 'msrc',
+    label: 'Microsoft MSRC (CVRF API v3)',
+    enabled: true,
+    role: 'list',
+    format: 'cvrf',
+    tier: 1,
+    proxyPrefix: '/api/msrc',
+    baseUrl: 'https://api.msrc.microsoft.com',
+    path: '/cvrf/v3.0',
+  },
+  {
+    id: 'k8s',
+    label: 'Kubernetes Official CVE Feed',
+    enabled: true,
+    role: 'list',
+    format: 'jsonfeed',
+    tier: 1,
+    proxyPrefix: '/api/k8s',
+    baseUrl: 'https://kubernetes.io',
+    path: '/docs/reference/issues-security/official-cve-feed/index.json',
+  },
+  {
+    id: 'paloalto',
+    label: 'Palo Alto Networks Security Advisories',
+    enabled: true,
+    role: 'list',
+    format: 'json',
+    tier: 1,
+    proxyPrefix: '/api/paloalto',
+    baseUrl: 'https://security.paloaltonetworks.com',
+    path: '/json',
   },
 ]
 

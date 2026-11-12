@@ -1,3 +1,5 @@
+'use client'
+
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
 import FullscreenIcon from '@mui/icons-material/Fullscreen'
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit'
