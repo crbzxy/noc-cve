@@ -83,12 +83,13 @@ export function AppSelect({ width = 240 }: { width?: number }) {
             '& .MuiOutlinedInput-root': { bgcolor: ACCENT_SOFT },
             '& .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main', borderWidth: 2 },
             '& .MuiSelect-select': { fontWeight: 700, color: TEXT_STRONG },
+            '& .MuiSelect-icon': { display: 'none' },
           }),
           '& .MuiSelect-select': {
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            pr: active ? 4.5 : undefined,
+            pr: active ? 4 : undefined,
           },
         }}
       >
@@ -98,6 +99,7 @@ export function AppSelect({ width = 240 }: { width?: number }) {
           value={selectedAppId ?? NONE}
           onChange={onChange}
           renderValue={() => selectedLabel ?? 'Todas las apps'}
+          IconComponent={active ? () => null : undefined}
           input={(
             <OutlinedInput
               label="Aplicación"
@@ -111,7 +113,7 @@ export function AppSelect({ width = 240 }: { width?: number }) {
                       event.stopPropagation()
                       clear()
                     }}
-                    sx={{ mr: 2, p: 0.25 }}
+                    sx={{ position: 'absolute', right: 8, p: 0.25 }}
                   >
                     <CloseIcon sx={{ fontSize: 16 }} />
                   </IconButton>
