@@ -16,6 +16,9 @@ import { fetchWordfence } from '../sources/wordfence'
 import type { CveRecord, PartialCve } from '../types'
 import type { CorpusSnapshot, CorpusSourceHealth } from './types'
 
+/** Solo corre en Node (bundle de ingest); tsconfig.app no carga @types/node. */
+declare const process: { env: Record<string, string | undefined> }
+
 function missingAuthReason(source: SourceConfig | undefined): string | undefined {
   if (!source?.authRequired || !source.authEnv) return undefined
   const value = process.env[source.authEnv]

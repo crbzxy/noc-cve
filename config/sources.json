@@ -3,7 +3,7 @@
     {
       "id": "nvd",
       "label": "NVD (NIST)",
-      "enabled": false,
+      "enabled": true,
       "role": "list",
       "proxyPrefix": "/api/nvd",
       "baseUrl": "https://services.nvd.nist.gov",
@@ -23,7 +23,7 @@
     {
       "id": "kev",
       "label": "CISA KEV",
-      "enabled": false,
+      "enabled": true,
       "role": "enrich",
       "proxyPrefix": "/api/kev",
       "baseUrl": "https://www.cisa.gov",
@@ -59,7 +59,7 @@
     {
       "id": "euvd",
       "label": "ENISA EUVD",
-      "enabled": false,
+      "enabled": true,
       "role": "enrich",
       "proxyPrefix": "/api/euvd",
       "baseUrl": "https://euvdservices.enisa.europa.eu",
@@ -68,7 +68,7 @@
     {
       "id": "vulncheck-kev",
       "label": "VulnCheck KEV",
-      "enabled": false,
+      "enabled": true,
       "role": "enrich",
       "proxyPrefix": "/api/vckev",
       "baseUrl": "https://api.vulncheck.com",
@@ -79,7 +79,7 @@
     {
       "id": "wordfence",
       "label": "Wordfence Intelligence",
-      "enabled": false,
+      "enabled": true,
       "role": "list",
       "proxyPrefix": "/api/wordfence",
       "baseUrl": "https://www.wordfence.com",
