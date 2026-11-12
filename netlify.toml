@@ -1,0 +1,16 @@
+# Netlify sirve estáticos: hay que publicar dist/ (build de Vite), no el repo crudo.
+# Si publicas la raíz, index.html apunta a /src/main.tsx y Netlify lo sirve como
+# application/octet-stream → error de MIME en type=module.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# SPA: rutas de UI → index.html. No aplica a archivos reales en dist/assets/.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
