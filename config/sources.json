@@ -3,7 +3,7 @@
     {
       "id": "nvd",
       "label": "NVD (NIST)",
-      "enabled": true,
+      "enabled": false,
       "role": "list",
       "proxyPrefix": "/api/nvd",
       "baseUrl": "https://services.nvd.nist.gov",
@@ -23,7 +23,7 @@
     {
       "id": "kev",
       "label": "CISA KEV",
-      "enabled": true,
+      "enabled": false,
       "role": "enrich",
       "proxyPrefix": "/api/kev",
       "baseUrl": "https://www.cisa.gov",
@@ -59,7 +59,7 @@
     {
       "id": "euvd",
       "label": "ENISA EUVD",
-      "enabled": true,
+      "enabled": false,
       "role": "enrich",
       "proxyPrefix": "/api/euvd",
       "baseUrl": "https://euvdservices.enisa.europa.eu",
@@ -68,22 +68,24 @@
     {
       "id": "vulncheck-kev",
       "label": "VulnCheck KEV",
-      "enabled": true,
+      "enabled": false,
       "role": "enrich",
       "proxyPrefix": "/api/vckev",
       "baseUrl": "https://api.vulncheck.com",
       "path": "/v3/index/vulncheck-kev",
-      "authEnv": "VULNCHECK_TOKEN"
+      "authEnv": "VULNCHECK_TOKEN",
+      "authRequired": true
     },
     {
       "id": "wordfence",
       "label": "Wordfence Intelligence",
-      "enabled": true,
+      "enabled": false,
       "role": "list",
       "proxyPrefix": "/api/wordfence",
       "baseUrl": "https://www.wordfence.com",
       "path": "/api/intelligence/v3/vulnerabilities/production",
-      "authEnv": "WORDFENCE_API_KEY"
+      "authEnv": "WORDFENCE_API_KEY",
+      "authRequired": true
     }
   ],
   "watchedPackages": [],
