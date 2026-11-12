@@ -86,7 +86,7 @@ function SourceLogBlock({ source }: { source: SourceHealth }) {
             ? 'Conecta correctamente.'
             : source.status === 'loading'
               ? 'Consultando…'
-              : 'Fuente desactivada.'}
+              : (source.error || 'Fuente desactivada.')}
       </Typography>
     </Box>
   )

@@ -9,6 +9,8 @@ export interface SourceConfig {
   baseUrl: string
   path: string
   authEnv?: string
+  /** Si true, sin process.env[authEnv] la fuente queda off (no se llama al upstream). */
+  authRequired?: boolean
 }
 
 export type TechnologyCategory = 'language' | 'framework'
@@ -147,6 +149,7 @@ const TRUTH_SOURCES: SourceConfig[] = [
     baseUrl: 'https://api.vulncheck.com',
     path: '/v3/index/vulncheck-kev',
     authEnv: 'VULNCHECK_TOKEN',
+    authRequired: true,
   },
   {
     id: 'wordfence',
@@ -157,6 +160,7 @@ const TRUTH_SOURCES: SourceConfig[] = [
     baseUrl: 'https://www.wordfence.com',
     path: '/api/intelligence/v3/vulnerabilities/production',
     authEnv: 'WORDFENCE_API_KEY',
+    authRequired: true,
   },
 ]
 
