@@ -6,11 +6,13 @@ import {
 import { aggregate } from '../lib/aggregate'
 import { CORPUS_WINDOW_DAYS } from '../lib/corpusWindow'
 import { applyTechnologyTags } from '../lib/matchTechnologies'
+import { fetchCircl } from '../sources/circl'
 import { fetchCveOrg } from '../sources/cveorg'
 import { fetchEuvd } from '../sources/euvd'
 import { fetchGithub } from '../sources/github'
 import { fetchKev, type KevCatalog } from '../sources/kev'
 import { fetchNvd } from '../sources/nvd'
+import { fetchRedHat } from '../sources/redhat'
 import { fetchVulncheckKev, type VulncheckKevCatalog } from '../sources/vulncheckKev'
 import { fetchWordfence } from '../sources/wordfence'
 import type { CveRecord, PartialCve } from '../types'
@@ -127,15 +129,19 @@ export async function buildCorpus(options: BuildCorpusOptions): Promise<CorpusSn
   const nvdMeta = findSource(config, 'nvd')
   const ghMeta = findSource(config, 'github')
   const cveorgMeta = findSource(config, 'cveorg')
+  const circlMeta = findSource(config, 'circl')
+  const redhatMeta = findSource(config, 'redhat')
   const wordfenceMeta = findSource(config, 'wordfence')
   const euvdMeta = findSource(config, 'euvd')
   const kevMeta = findSource(config, 'kev')
   const vulncheckMeta = findSource(config, 'vulncheck-kev')
 
-  const [nvd, github, cveorg, wordfence, euvd] = await Promise.all([
+  const [nvd, github, cveorg, circl, redhat, wordfence, euvd] = await Promise.all([
     settleList('nvd', nvdMeta?.label ?? 'NVD', sourceRunState(config, 'nvd'), () => fetchNvd(days, options.signal)),
     settleList('github', ghMeta?.label ?? 'GitHub', sourceRunState(config, 'github'), () => fetchGithub(days, options.signal)),
     settleList('cveorg', cveorgMeta?.label ?? 'CVE.org', sourceRunState(config, 'cveorg'), () => fetchCveOrg(days, options.signal)),
+    settleList('circl', circlMeta?.label ?? 'CIRCL', sourceRunState(config, 'circl'), () => fetchCircl(days, options.signal)),
+    settleList('redhat', redhatMeta?.label ?? 'Red Hat', sourceRunState(config, 'redhat'), () => fetchRedHat(days, options.signal)),
     settleList('wordfence', wordfenceMeta?.label ?? 'Wordfence', sourceRunState(config, 'wordfence'), () => fetchWordfence(days, options.signal)),
     settleList('euvd', euvdMeta?.label ?? 'EUVD', sourceRunState(config, 'euvd'), () => fetchEuvd(days, options.signal)),
   ])
@@ -201,7 +207,7 @@ export async function buildCorpus(options: BuildCorpusOptions): Promise<CorpusSn
   const updatedAt = Date.now()
   const aggregated = aggregate({
     days,
-    lists: [nvd.list, github.list, cveorg.list, wordfence.list, euvd.list],
+    lists: [nvd.list, github.list, cveorg.list, circl.list, redhat.list, wordfence.list, euvd.list],
     kev,
     vulncheckKev,
   })
@@ -237,6 +243,22 @@ export async function buildCorpus(options: BuildCorpusOptions): Promise<CorpusSn
       count: cveorg.enabled ? cveorg.list.length : undefined,
       error: cveorg.error ?? cveorg.offReason,
       updatedAt: cveorg.enabled && !cveorg.error ? updatedAt : undefined,
+    },
+    {
+      id: 'circl',
+      label: circl.label,
+      status: !circl.enabled ? 'off' : circl.error ? 'error' : 'ok',
+      count: circl.enabled ? circl.list.length : undefined,
+      error: circl.error ?? circl.offReason,
+      updatedAt: circl.enabled && !circl.error ? updatedAt : undefined,
+    },
+    {
+      id: 'redhat',
+      label: redhat.label,
+      status: !redhat.enabled ? 'off' : redhat.error ? 'error' : 'ok',
+      count: redhat.enabled ? redhat.list.length : undefined,
+      error: redhat.error ?? redhat.offReason,
+      updatedAt: redhat.enabled && !redhat.error ? updatedAt : undefined,
     },
     {
       id: 'wordfence',

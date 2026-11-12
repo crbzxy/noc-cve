@@ -24,9 +24,12 @@ function Separator() {
 
 export function FiltersBar({
   kevUnavailable = false,
+  kevFilterAvailable = true,
   windowFallbackHint = null,
 }: {
   kevUnavailable?: boolean
+  /** false cuando CISA/VulnCheck KEV están off o caídos: no mostrar el switch. */
+  kevFilterAvailable?: boolean
   windowFallbackHint?: string | null
 }) {
   const f = useFilters()
@@ -167,30 +170,32 @@ export function FiltersBar({
           ))}
         </TextField>
 
-        <Tooltip
-          title={
-            kevUnavailable
-              ? 'La fuente KEV no respondió: este filtro no puede marcar explotadas. Revisa Fuentes (sidebar) y recarga el corpus.'
-              : 'Solo CVE en CISA/VulnCheck KEV (explotación conocida en el mundo real). Si la fuente KEV está caída, la lista queda vacía.'
-          }
-        >
-          <FormControlLabel
-            sx={{ ml: { md: 'auto' }, mr: 0.5 }}
-            control={(
-              <Switch
-                size="small"
-                color={kevUnavailable && f.kevOnly ? 'warning' : 'primary'}
-                checked={f.kevOnly}
-                onChange={(e) => f.setKevOnly(e.target.checked)}
-              />
-            )}
-            label={(
-              <Typography variant="body2" color={kevUnavailable && f.kevOnly ? 'warning.main' : undefined}>
-                Solo explotadas{kevUnavailable && f.kevOnly ? ' (KEV caído)' : ''}
-              </Typography>
-            )}
-          />
-        </Tooltip>
+        {kevFilterAvailable && (
+          <Tooltip
+            title={
+              kevUnavailable
+                ? 'La fuente KEV no respondió: este filtro no puede marcar explotadas. Revisa Fuentes (sidebar) y recarga el corpus.'
+                : 'Solo CVE en CISA/VulnCheck KEV (explotación conocida en el mundo real). Si la fuente KEV está caída, la lista queda vacía.'
+            }
+          >
+            <FormControlLabel
+              sx={{ ml: { md: 'auto' }, mr: 0.5 }}
+              control={(
+                <Switch
+                  size="small"
+                  color={kevUnavailable && f.kevOnly ? 'warning' : 'primary'}
+                  checked={f.kevOnly}
+                  onChange={(e) => f.setKevOnly(e.target.checked)}
+                />
+              )}
+              label={(
+                <Typography variant="body2" color={kevUnavailable && f.kevOnly ? 'warning.main' : undefined}>
+                  Solo explotadas{kevUnavailable && f.kevOnly ? ' (KEV caído)' : ''}
+                </Typography>
+              )}
+            />
+          </Tooltip>
+        )}
       </Stack>
     </Box>
   )

@@ -67,6 +67,8 @@ const FORTIGUARD_HOSTS = [
   'services.nvd.nist.gov',
   'api.github.com',
   'www.cve.org',
+  'vulnerability.circl.lu',
+  'access.redhat.com',
   'www.wordfence.com',
   'api.osv.dev',
   'euvdservices.enisa.europa.eu',
@@ -100,6 +102,18 @@ const SOURCE_HINTS: SourceHint[] = [
     on401: 'CVE.org no pide credenciales. Revisa firewall/TLS hacia www.cve.org.',
     on403: 'CVE.org 403: suele ser Web Filter / SSL Inspection. Pide a Seguridad liberar www.cve.org (no usa API key).',
     on429: 'CVE.org rate limit (429). Espera y reintenta (beta sin API key).',
+  },
+  {
+    match: /\/api\/circl\b/,
+    on401: 'CIRCL no requiere API key. Revisa firewall hacia vulnerability.circl.lu.',
+    on403: 'CIRCL 403: no requiere API key. Revisa firewall hacia vulnerability.circl.lu.',
+    on429: 'CIRCL rate limit. Espera y reintenta.',
+  },
+  {
+    match: /\/api\/redhat\b/,
+    on401: 'Red Hat Security Data no requiere API key. Revisa firewall hacia access.redhat.com.',
+    on403: 'Red Hat 403: no requiere API key. Revisa firewall hacia access.redhat.com.',
+    on429: 'Red Hat rate limit. Espera y reintenta.',
   },
   {
     match: /\/api\/wordfence\b/,
@@ -168,6 +182,8 @@ function statusHintForUrl(url: string, status: number): string | null {
 
 function sourceIdFromProxyUrl(requestUrl: string): string {
   if (/\/api\/cveorg\b/.test(requestUrl)) return 'cveorg'
+  if (/\/api\/circl\b/.test(requestUrl)) return 'circl'
+  if (/\/api\/redhat\b/.test(requestUrl)) return 'redhat'
   if (/\/api\/vckev\b/.test(requestUrl)) return 'vulncheck-kev'
   if (/\/api\/wordfence\b/.test(requestUrl)) return 'wordfence'
   if (/\/api\/kev\b/.test(requestUrl)) return 'kev'

@@ -10,6 +10,8 @@ import { useFilters } from '../store/filters'
 const TRUTH_SOURCE_LABEL: Record<TruthSourceId, string> = {
   nvd: 'NVD',
   cveorg: 'CVE.org',
+  circl: 'CIRCL',
+  redhat: 'Red Hat',
   github: 'GitHub',
   osv: 'OSV',
   wordfence: 'Wordfence',

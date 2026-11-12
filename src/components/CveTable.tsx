@@ -24,6 +24,8 @@ const SOURCE_SHORT: Record<SourceId, string> = {
   kev: 'KEV',
   github: 'GH',
   cveorg: 'CVE',
+  circl: 'CIRCL',
+  redhat: 'RH',
   osv: 'OSV',
   euvd: 'EUVD',
   'vulncheck-kev': 'VCKEV',

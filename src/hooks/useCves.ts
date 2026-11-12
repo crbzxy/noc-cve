@@ -313,6 +313,8 @@ export function useCves() {
   const nvdMeta = findSource(config, 'nvd')
   const ghMeta = findSource(config, 'github')
   const cveorgMeta = findSource(config, 'cveorg')
+  const circlMeta = findSource(config, 'circl')
+  const redhatMeta = findSource(config, 'redhat')
   const wordfenceMeta = findSource(config, 'wordfence')
   const osvMeta = findSource(config, 'osv')
   const euvdMeta = findSource(config, 'euvd')
@@ -333,6 +335,8 @@ export function useCves() {
       corpusSourceHealth(snapshot, 'nvd', nvdMeta?.label ?? 'NVD', nvdMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(nvdMeta?.enabled)),
       corpusSourceHealth(snapshot, 'github', ghMeta?.label ?? 'GitHub', ghMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(ghMeta?.enabled)),
       corpusSourceHealth(snapshot, 'cveorg', cveorgMeta?.label ?? 'CVE.org', cveorgMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(cveorgMeta?.enabled)),
+      corpusSourceHealth(snapshot, 'circl', circlMeta?.label ?? 'CIRCL', circlMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(circlMeta?.enabled)),
+      corpusSourceHealth(snapshot, 'redhat', redhatMeta?.label ?? 'Red Hat', redhatMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(redhatMeta?.enabled)),
       corpusSourceHealth(snapshot, 'wordfence', wordfenceMeta?.label ?? 'Wordfence', wordfenceMeta?.baseUrl, reloadCorpus, sourceEnabledInConfig(wordfenceMeta?.enabled)),
       health(
         'osv',
@@ -373,7 +377,7 @@ export function useCves() {
   }, [
     corpus.data, osvHits, epss, osvOn, osvFilterOn, watchedPackages.length, epssConfigOn, epssIds.length,
     sources, packageHits, techAll, technologies,
-    nvdMeta, ghMeta, cveorgMeta, wordfenceMeta, osvMeta, euvdMeta, kevMeta, vulncheckMeta, epssMeta,
+    nvdMeta, ghMeta, cveorgMeta, circlMeta, redhatMeta, wordfenceMeta, osvMeta, euvdMeta, kevMeta, vulncheckMeta, epssMeta,
     reloadCorpus,
   ])
 

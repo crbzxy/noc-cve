@@ -7,6 +7,8 @@ export const SOURCES = [
   'kev',
   'github',
   'cveorg',
+  'circl',
+  'redhat',
   'osv',
   'euvd',
   'vulncheck-kev',

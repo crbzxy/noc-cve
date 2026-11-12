@@ -123,6 +123,16 @@ export default function App() {
     document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()
 
   const kevUnavailable = health.some((h) => h.id === 'kev' && h.status === 'error')
+  const kevFilterAvailable = health.some(
+    (row) => (row.id === 'kev' || row.id === 'vulncheck-kev')
+      && (row.status === 'ok' || row.status === 'loading'),
+  )
+  const kevOnly = useFilters((state) => state.kevOnly)
+  const setKevOnly = useFilters((state) => state.setKevOnly)
+
+  useEffect(() => {
+    if (!kevFilterAvailable && kevOnly) setKevOnly(false)
+  }, [kevFilterAvailable, kevOnly, setKevOnly])
   const librarySeverityCounts = useMemo(() => {
     const counts: Partial<Record<Severity, number>> = {}
     for (const row of libraryRisk) {
@@ -300,7 +310,11 @@ export default function App() {
           </Box>
 
           <Box sx={{ flexShrink: 0 }}>
-            <FiltersBar kevUnavailable={kevUnavailable} windowFallbackHint={fallbackHint} />
+            <FiltersBar
+              kevUnavailable={kevUnavailable}
+              kevFilterAvailable={kevFilterAvailable}
+              windowFallbackHint={fallbackHint}
+            />
           </Box>
 
           {!selectedAppId && (

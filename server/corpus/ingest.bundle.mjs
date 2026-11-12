@@ -54,6 +54,24 @@ var TRUTH_SOURCES = [
 		path: "/restapiv1/search"
 	},
 	{
+		id: "circl",
+		label: "CIRCL Vulnerability-Lookup",
+		enabled: true,
+		role: "list",
+		proxyPrefix: "/api/circl",
+		baseUrl: "https://vulnerability.circl.lu",
+		path: "/api"
+	},
+	{
+		id: "redhat",
+		label: "Red Hat Security Data",
+		enabled: true,
+		role: "list",
+		proxyPrefix: "/api/redhat",
+		baseUrl: "https://access.redhat.com",
+		path: "/hydra/rest/securitydata/cve.json"
+	},
+	{
 		id: "osv",
 		label: "OSV.dev",
 		enabled: true,
@@ -175,6 +193,8 @@ var FORTIGUARD_HOSTS = [
 	"services.nvd.nist.gov",
 	"api.github.com",
 	"www.cve.org",
+	"vulnerability.circl.lu",
+	"access.redhat.com",
 	"www.wordfence.com",
 	"api.osv.dev",
 	"euvdservices.enisa.europa.eu",
@@ -200,6 +220,18 @@ var SOURCE_HINTS = [
 		on401: "CVE.org no pide credenciales. Revisa firewall/TLS hacia www.cve.org.",
 		on403: "CVE.org 403: suele ser Web Filter / SSL Inspection. Pide a Seguridad liberar www.cve.org (no usa API key).",
 		on429: "CVE.org rate limit (429). Espera y reintenta (beta sin API key)."
+	},
+	{
+		match: /\/api\/circl\b/,
+		on401: "CIRCL no requiere API key. Revisa firewall hacia vulnerability.circl.lu.",
+		on403: "CIRCL 403: no requiere API key. Revisa firewall hacia vulnerability.circl.lu.",
+		on429: "CIRCL rate limit. Espera y reintenta."
+	},
+	{
+		match: /\/api\/redhat\b/,
+		on401: "Red Hat Security Data no requiere API key. Revisa firewall hacia access.redhat.com.",
+		on403: "Red Hat 403: no requiere API key. Revisa firewall hacia access.redhat.com.",
+		on429: "Red Hat rate limit. Espera y reintenta."
 	},
 	{
 		match: /\/api\/wordfence\b/,
@@ -256,6 +288,8 @@ function statusHintForUrl(url, status) {
 }
 function sourceIdFromProxyUrl(requestUrl) {
 	if (/\/api\/cveorg\b/.test(requestUrl)) return "cveorg";
+	if (/\/api\/circl\b/.test(requestUrl)) return "circl";
+	if (/\/api\/redhat\b/.test(requestUrl)) return "redhat";
 	if (/\/api\/vckev\b/.test(requestUrl)) return "vulncheck-kev";
 	if (/\/api\/wordfence\b/.test(requestUrl)) return "wordfence";
 	if (/\/api\/kev\b/.test(requestUrl)) return "kev";
@@ -392,12 +426,13 @@ function empty(id) {
 	};
 }
 function isCanonical(sources) {
-	return sources.includes("cveorg") || sources.includes("nvd");
+	return sources.includes("cveorg") || sources.includes("circl") || sources.includes("nvd");
 }
 function prefersIncomingScore(acc, partial) {
 	if (acc.cvss == null) return true;
 	if (partial.sources.includes("cveorg")) return true;
-	if (partial.sources.includes("nvd") && !acc.sources.includes("cveorg")) return true;
+	if (partial.sources.includes("circl") && !acc.sources.includes("cveorg")) return true;
+	if (partial.sources.includes("nvd") && !acc.sources.includes("cveorg") && !acc.sources.includes("circl")) return true;
 	return false;
 }
 /** Fusiona un parcial. CVE.org > NVD son canónicos de CVSS/descripción. */
@@ -540,9 +575,135 @@ function applyTechnologyTags(records, technologies) {
 		};
 	});
 }
+// src/sources/circl.ts
+var PAGE_SIZE$3 = 100;
+var MAX_PAGES$6 = 20;
+function pickMetric$2(container) {
+	const metrics = container?.metrics ?? [];
+	for (const metric of metrics) {
+		const data = metric.cvssV4_0 ?? metric.cvssV3_1 ?? metric.cvssV3_0 ?? metric.cvssV2_0;
+		if (data?.baseScore == null) continue;
+		return {
+			score: data.baseScore,
+			sev: data.baseSeverity,
+			version: data.version ?? (metric.cvssV4_0 ? "4.0" : metric.cvssV3_1 ? "3.1" : void 0)
+		};
+	}
+	return {};
+}
+function pickDescription$1(container) {
+	const list = container?.descriptions ?? [];
+	return list.find((item) => item.lang?.startsWith("en"))?.value ?? list[0]?.value ?? "";
+}
+function pickCwes$1(container) {
+	return (container?.problemTypes ?? []).flatMap((problem) => problem.descriptions ?? []).map((item) => item.cweId).filter((id) => Boolean(id?.startsWith("CWE-")));
+}
+function mapOsvSeverity(rows) {
+	for (const row of rows ?? []) {
+		if (!row.score) continue;
+		const numeric = Number(row.score);
+		if (Number.isFinite(numeric)) return { score: numeric };
+		const version = row.score.match(/^CVSS:(\d+(?:\.\d+)?)/i)?.[1];
+		if (version) return { version };
+	}
+	return {};
+}
+function severityFromScore$1(score) {
+	if (score == null) return void 0;
+	if (score >= 9) return "CRITICAL";
+	if (score >= 7) return "HIGH";
+	if (score >= 4) return "MEDIUM";
+	if (score > 0) return "LOW";
+	return "NONE";
+}
+function mapCveRecord(record) {
+	const id = record.cveMetadata?.cveId;
+	if (!id?.startsWith("CVE-")) return null;
+	const cna = record.containers?.cna;
+	const metric = pickMetric$2(cna);
+	const packages = (cna?.affected ?? []).map((item) => item.vendor && item.product ? `${item.vendor}:${item.product}` : item.product).filter((value) => Boolean(value));
+	return {
+		id,
+		title: cna?.title,
+		description: pickDescription$1(cna),
+		severity: normalizeSeverity(metric.sev),
+		cvss: metric.score,
+		cvssVersion: metric.version,
+		published: record.cveMetadata?.datePublished,
+		modified: record.cveMetadata?.dateUpdated,
+		status: record.cveMetadata?.state,
+		packages: [...new Set(packages)],
+		cwes: [...new Set(pickCwes$1(cna))],
+		references: (cna?.references ?? []).map((item) => item.url).filter(Boolean),
+		sources: ["circl"]
+	};
+}
+function mapOsvLike(item) {
+	const aliases = item.aliases ?? [];
+	const cveId = [item.id, ...aliases].find((value) => value?.startsWith("CVE-"));
+	if (!cveId) return null;
+	const metric = mapOsvSeverity(item.severity);
+	const packages = (item.affected ?? []).map((row) => {
+		const ecosystem = row.package?.ecosystem;
+		const name = row.package?.name;
+		if (ecosystem && name) return `${ecosystem}:${name}`;
+		return name;
+	}).filter((value) => Boolean(value));
+	return {
+		id: cveId,
+		aliases: [...new Set([item.id, ...aliases].filter((value) => Boolean(value) && value !== cveId))],
+		description: item.details ?? "",
+		severity: normalizeSeverity(severityFromScore$1(metric.score)),
+		cvss: metric.score,
+		cvssVersion: metric.version,
+		published: item.published,
+		modified: item.modified,
+		packages: [...new Set(packages)],
+		references: (item.references ?? []).map((row) => row.url).filter((url) => Boolean(url)),
+		sources: ["circl"]
+	};
+}
+function isCveRecord(item) {
+	return "cveMetadata" in item || "dataType" in item && item.dataType === "CVE_RECORD";
+}
+function mapItem$2(item) {
+	if (isCveRecord(item)) return mapCveRecord(item);
+	return mapOsvLike(item);
+}
+function inWindow$1(iso, sinceIso) {
+	if (!iso) return false;
+	return iso >= sinceIso;
+}
+async function fetchCircl(days, signal) {
+	const sinceIso = daysAgo(days).toISOString();
+	const sinceDate = sinceIso.slice(0, 10);
+	const out = /* @__PURE__ */ new Map();
+	for (let page = 1; page <= MAX_PAGES$6; page += 1) {
+		const { data } = await getJson(`/api/circl/vulnerability/?${new URLSearchParams({
+			source: "cvelistv5",
+			per_page: String(PAGE_SIZE$3),
+			page: String(page),
+			date_sort: "updated",
+			sort_order: "desc",
+			since: sinceDate
+		})}`, signal);
+		const rows = (Array.isArray(data) ? data : []).map(mapItem$2).filter((row) => Boolean(row));
+		if (rows.length === 0) break;
+		let olderThanWindow = 0;
+		for (const row of rows) {
+			if (!inWindow$1(row.published, sinceIso) && !inWindow$1(row.modified, sinceIso)) {
+				olderThanWindow += 1;
+				continue;
+			}
+			out.set(row.id, row);
+		}
+		if (rows.length < PAGE_SIZE$3 || olderThanWindow === rows.length) break;
+	}
+	return [...out.values()];
+}
 // src/sources/cveorg.ts
-var PAGE_SIZE$1 = 100;
-var MAX_PAGES$4 = 20;
+var PAGE_SIZE$2 = 100;
+var MAX_PAGES$5 = 20;
 var MAX_WINDOW = 1e4;
 function pickMetric$1(container) {
 	const metrics = container?.metrics ?? [];
@@ -602,7 +763,7 @@ async function searchPage(query, from, signal) {
 	const { data } = await postJson("/api/cveorg", {
 		query,
 		from,
-		size: PAGE_SIZE$1,
+		size: PAGE_SIZE$2,
 		sort: {
 			property: "cveId",
 			order: "desc"
@@ -613,8 +774,8 @@ async function searchPage(query, from, signal) {
 async function fetchCveOrg(days, signal) {
 	const sinceIso = daysAgo(days).toISOString();
 	const out = /* @__PURE__ */ new Map();
-	for (const query of yearQueries(days)) for (let page = 0; page < MAX_PAGES$4; page += 1) {
-		const from = page * PAGE_SIZE$1;
+	for (const query of yearQueries(days)) for (let page = 0; page < MAX_PAGES$5; page += 1) {
+		const from = page * PAGE_SIZE$2;
 		const data = await searchPage(query, from, signal);
 		const rows = (data.results ?? []).map(mapRecord).filter((row) => Boolean(row));
 		for (const row of rows) {
@@ -622,13 +783,13 @@ async function fetchCveOrg(days, signal) {
 			out.set(row.id, row);
 		}
 		const total = totalFrom(data);
-		if (rows.length === 0 || from + PAGE_SIZE$1 >= Math.min(total, MAX_WINDOW)) break;
+		if (rows.length === 0 || from + PAGE_SIZE$2 >= Math.min(total, MAX_WINDOW)) break;
 	}
 	return [...out.values()];
 }
 // src/sources/euvd.ts
-var PAGE_SIZE = 100;
-var MAX_PAGES$3 = 10;
+var PAGE_SIZE$1 = 100;
+var MAX_PAGES$4 = 10;
 function parseAliases(raw) {
 	if (!raw) return [];
 	return raw.split(/[\n,]+/).map((item) => item.trim()).filter(Boolean);
@@ -650,7 +811,7 @@ function severityFromScore(score) {
 	if (score > 0) return "LOW";
 	return "NONE";
 }
-function mapItem(item) {
+function mapItem$1(item) {
 	const aliases = parseAliases(item.aliases);
 	const id = aliases.find((alias) => alias.startsWith("CVE-")) ?? item.id;
 	if (!id) return null;
@@ -677,21 +838,21 @@ function mapItem(item) {
 async function fetchEuvd(days, signal) {
 	const fromDate = daysAgo(days).toISOString().slice(0, 10);
 	const out = [];
-	for (let page = 0; page < MAX_PAGES$3; page += 1) {
+	for (let page = 0; page < MAX_PAGES$4; page += 1) {
 		const { data } = await getJson(`/api/euvd?${new URLSearchParams({
 			fromDate,
-			size: String(PAGE_SIZE),
+			size: String(PAGE_SIZE$1),
 			page: String(page)
 		})}`, signal);
-		const rows = (data.items ?? []).map(mapItem).filter((row) => Boolean(row));
+		const rows = (data.items ?? []).map(mapItem$1).filter((row) => Boolean(row));
 		out.push(...rows);
 		const total = data.total ?? 0;
-		if ((page + 1) * PAGE_SIZE >= total || rows.length === 0) break;
+		if ((page + 1) * PAGE_SIZE$1 >= total || rows.length === 0) break;
 	}
 	return out;
 }
 // src/sources/github.ts
-var MAX_PAGES$2 = 5;
+var MAX_PAGES$3 = 5;
 function nextCursor(link) {
 	if (!link) return null;
 	const url = link.split(",").find((p) => p.includes("rel=\"next\""))?.match(/<([^>]+)>/)?.[1];
@@ -728,7 +889,7 @@ async function fetchGithub(days, signal) {
 		published: `>=${since}`
 	});
 	const out = [];
-	for (let page = 0; page < MAX_PAGES$2; page++) {
+	for (let page = 0; page < MAX_PAGES$3; page++) {
 		const { data, headers } = await getJson(`/api/github?${params}`, signal);
 		out.push(...data.map(mapGithub));
 		const after = nextCursor(headers.get("link"));
@@ -760,7 +921,7 @@ async function fetchKev(signal) {
 }
 // src/sources/nvd.ts
 var PAGE = 2e3;
-var MAX_PAGES$1 = 5;
+var MAX_PAGES$2 = 5;
 var asUtc = (d) => /[zZ]|[+-]\d\d:\d\d$/.test(d) ? d : `${d}Z`;
 var nvdDate = (d) => d.toISOString().replace("Z", "");
 function pickMetric(m) {
@@ -807,12 +968,66 @@ async function fetchNvd(days, signal) {
 		noRejected: ""
 	});
 	const out = [];
-	for (let page = 0; page < MAX_PAGES$1; page++) {
+	for (let page = 0; page < MAX_PAGES$2; page++) {
 		base.set("startIndex", String(page * PAGE));
 		const { data } = await getJson(`/api/nvd?${base.toString().replace("noRejected=", "noRejected")}`, signal);
 		out.push(...data.vulnerabilities.map((v) => mapNvd(v.cve)));
 		if (data.startIndex + data.resultsPerPage >= data.totalResults) break;
 		await sleep(6500, signal);
+	}
+	return out;
+}
+// src/sources/redhat.ts
+var PAGE_SIZE = 1e3;
+var MAX_PAGES$1 = 10;
+function toNumber(value) {
+	if (value == null || value === "") return void 0;
+	const numeric = typeof value === "number" ? value : Number(value);
+	return Number.isFinite(numeric) ? numeric : void 0;
+}
+function mapSeverity(raw) {
+	if (!raw) return void 0;
+	const key = raw.toLowerCase();
+	if (key === "critical") return "CRITICAL";
+	if (key === "important") return "HIGH";
+	if (key === "moderate") return "MEDIUM";
+	if (key === "low") return "LOW";
+	return raw.toUpperCase();
+}
+function vectorVersion(vector) {
+	return (vector?.match(/^CVSS:(\d+(?:\.\d+)?)/i))?.[1];
+}
+function mapItem(item) {
+	const id = item.CVE;
+	if (!id?.startsWith("CVE-")) return null;
+	const cvss = toNumber(item.cvss3_score) ?? toNumber(item.cvss_score);
+	const cvssVersion = vectorVersion(item.cvss3_scoring_vector) ?? vectorVersion(item.cvss_scoring_vector) ?? (item.cvss3_score != null ? "3.1" : void 0);
+	const cwes = item.CWE ? item.CWE.split(/[\s,]+/).map((value) => value.trim()).filter((value) => value.startsWith("CWE-")) : [];
+	return {
+		id,
+		description: item.bugzilla_description ?? "",
+		severity: normalizeSeverity(mapSeverity(item.severity)),
+		cvss,
+		cvssVersion,
+		published: item.public_date,
+		packages: [...new Set(item.affected_packages ?? [])],
+		cwes: [...new Set(cwes)],
+		references: item.resource_url ? [item.resource_url] : [],
+		sources: ["redhat"]
+	};
+}
+async function fetchRedHat(days, signal) {
+	const after = daysAgo(days).toISOString().slice(0, 10);
+	const out = [];
+	for (let page = 1; page <= MAX_PAGES$1; page += 1) {
+		const { data } = await getJson(`/api/redhat?${new URLSearchParams({
+			after,
+			per_page: String(PAGE_SIZE),
+			page: String(page)
+		})}`, signal);
+		const rows = (Array.isArray(data) ? data : []).map(mapItem).filter((row) => Boolean(row));
+		out.push(...rows);
+		if (rows.length < PAGE_SIZE) break;
 	}
 	return out;
 }
@@ -1003,14 +1218,18 @@ async function buildCorpus(options) {
 	const nvdMeta = findSource(config, "nvd");
 	const ghMeta = findSource(config, "github");
 	const cveorgMeta = findSource(config, "cveorg");
+	const circlMeta = findSource(config, "circl");
+	const redhatMeta = findSource(config, "redhat");
 	const wordfenceMeta = findSource(config, "wordfence");
 	const euvdMeta = findSource(config, "euvd");
 	const kevMeta = findSource(config, "kev");
 	const vulncheckMeta = findSource(config, "vulncheck-kev");
-	const [nvd, github, cveorg, wordfence, euvd] = await Promise.all([
+	const [nvd, github, cveorg, circl, redhat, wordfence, euvd] = await Promise.all([
 		settleList("nvd", nvdMeta?.label ?? "NVD", sourceRunState(config, "nvd"), () => fetchNvd(days, options.signal)),
 		settleList("github", ghMeta?.label ?? "GitHub", sourceRunState(config, "github"), () => fetchGithub(days, options.signal)),
 		settleList("cveorg", cveorgMeta?.label ?? "CVE.org", sourceRunState(config, "cveorg"), () => fetchCveOrg(days, options.signal)),
+		settleList("circl", circlMeta?.label ?? "CIRCL", sourceRunState(config, "circl"), () => fetchCircl(days, options.signal)),
+		settleList("redhat", redhatMeta?.label ?? "Red Hat", sourceRunState(config, "redhat"), () => fetchRedHat(days, options.signal)),
 		settleList("wordfence", wordfenceMeta?.label ?? "Wordfence", sourceRunState(config, "wordfence"), () => fetchWordfence(days, options.signal)),
 		settleList("euvd", euvdMeta?.label ?? "EUVD", sourceRunState(config, "euvd"), () => fetchEuvd(days, options.signal))
 	]);
@@ -1087,6 +1306,8 @@ async function buildCorpus(options) {
 			nvd.list,
 			github.list,
 			cveorg.list,
+			circl.list,
+			redhat.list,
 			wordfence.list,
 			euvd.list
 		],
@@ -1124,6 +1345,22 @@ async function buildCorpus(options) {
 				count: cveorg.enabled ? cveorg.list.length : void 0,
 				error: cveorg.error ?? cveorg.offReason,
 				updatedAt: cveorg.enabled && !cveorg.error ? updatedAt : void 0
+			},
+			{
+				id: "circl",
+				label: circl.label,
+				status: !circl.enabled ? "off" : circl.error ? "error" : "ok",
+				count: circl.enabled ? circl.list.length : void 0,
+				error: circl.error ?? circl.offReason,
+				updatedAt: circl.enabled && !circl.error ? updatedAt : void 0
+			},
+			{
+				id: "redhat",
+				label: redhat.label,
+				status: !redhat.enabled ? "off" : redhat.error ? "error" : "ok",
+				count: redhat.enabled ? redhat.list.length : void 0,
+				error: redhat.error ?? redhat.offReason,
+				updatedAt: redhat.enabled && !redhat.error ? updatedAt : void 0
 			},
 			{
 				id: "wordfence",

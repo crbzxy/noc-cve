@@ -16,13 +16,20 @@ function empty(id: string): CveRecord {
 }
 
 function isCanonical(sources: SourceId[]): boolean {
-  return sources.includes('cveorg') || sources.includes('nvd')
+  return sources.includes('cveorg') || sources.includes('circl') || sources.includes('nvd')
 }
 
 function prefersIncomingScore(acc: CveRecord, partial: PartialCve): boolean {
   if (acc.cvss == null) return true
   if (partial.sources.includes('cveorg')) return true
-  if (partial.sources.includes('nvd') && !acc.sources.includes('cveorg')) return true
+  if (partial.sources.includes('circl') && !acc.sources.includes('cveorg')) return true
+  if (
+    partial.sources.includes('nvd')
+    && !acc.sources.includes('cveorg')
+    && !acc.sources.includes('circl')
+  ) {
+    return true
+  }
   return false
 }
 

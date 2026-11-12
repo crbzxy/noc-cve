@@ -135,13 +135,15 @@ Las tecnologías **no tienen API propia**: se etiquetan por keywords sobre el co
 - **WordPress:** Wordfence cubre plugins/temas que NVD suele omitir o atrasar.
 - **SAP:** solo CVE públicos vía NVD/CVE.org/GitHub. Los Security Notes del portal SAP Support **no** están integrados (sin API pública libre).
 - **OSV:** aplica cuando hay `watchedPackages` / inventario de app con `ecosystem` + `name` (+ versión).
-- **FortiGuard:** liberar los 9 hosts de fuentes; las tecnologías no añaden URLs nuevas.
+- **FortiGuard:** liberar los hosts de fuentes; las tecnologías no añaden URLs nuevas.
 
 | Fuente | Rol | Base URL | Endpoint | Qué aporta | Credencial |
 |---|---|---|---|---|---|
 | **NVD (NIST)** API 2.0 | list | `https://services.nvd.nist.gov` | `/rest/json/cves/2.0` | CVSS enriquecido, CWE, estado de análisis | `NVD_API_KEY` (opcional) |
 | **GitHub Advisories** | list | `https://api.github.com` | `/advisories` | Paquetes por ecosistema y GHSA sin CVE | `GITHUB_TOKEN` (opcional) |
 | **CVE.org** Search API | list | `https://www.cve.org` | `POST /restapiv1/search` | Fuente canónica del programa CVE (respaldo si NVD se atrasa) | — |
+| **CIRCL** Vulnerability-Lookup | list | `https://vulnerability.circl.lu` | `/api/vulnerability/` (`cvelistv5`) | CERT.LU · CVE List 5.x sin auth (alternativa oficial a NVD) | — |
+| **Red Hat** Security Data | list | `https://access.redhat.com` | `/hydra/rest/securitydata/cve.json` | CVEs y severidad RH (ecosistema Linux/RHEL) | — |
 | **Wordfence Intelligence** | list | `https://www.wordfence.com` | `/api/intelligence/v3/vulnerabilities/production` | Plugins/temas WordPress poco cubiertos en NVD | `WORDFENCE_API_KEY` |
 | **OSV.dev** | match | `https://api.osv.dev` | `/v1` | Cruce por *paquete + versión* (npm, Packagist, Maven…) | — |
 | **ENISA EUVD** | enrich | `https://euvdservices.enisa.europa.eu` | `/api/search` | Respaldo UE ante inestabilidad NVD/CVE | — |
@@ -149,7 +151,9 @@ Las tecnologías **no tienen API propia**: se etiquetan por keywords sobre el co
 | **VulnCheck KEV** | enrich | `https://api.vulncheck.com` | `/v3/index/vulncheck-kev` | KEV ampliado (mayor cobertura que CISA) | `VULNCHECK_TOKEN` |
 | **FIRST EPSS** | score | `https://api.first.org` | `/data/v1/epss` | Probabilidad de explotación a 30 días | — |
 
-**Whitelist FortiGuard / firewall** (hosts a liberar): `services.nvd.nist.gov`, `api.github.com`, `www.cve.org`, `www.wordfence.com`, `api.osv.dev`, `euvdservices.enisa.europa.eu`, `www.cisa.gov`, `api.vulncheck.com`, `api.first.org`.
+**Whitelist FortiGuard / firewall** (hosts a liberar): `services.nvd.nist.gov`, `api.github.com`, `www.cve.org`, `vulnerability.circl.lu`, `access.redhat.com`, `www.wordfence.com`, `api.osv.dev`, `euvdservices.enisa.europa.eu`, `www.cisa.gov`, `api.vulncheck.com`, `api.first.org`.
+
+**MITRE CVE AWG** (`cveawg.mitre.org`): el lookup público por ID existe, pero el listado masivo exige credenciales CNA. En el dashboard se cubre con **CVE.org** + **CIRCL (`cvelistv5`)**.
 
 **SSL Inspection:** si curl/Node reportan `self-signed certificate in certificate chain` / `SELF_SIGNED_CERT_IN_CHAIN`, el proxy sigue interceptando TLS. Liberar en Web Filter **no basta**. Opciones: (1) Seguridad excluye el host de **SSL Inspection**, o (2) confiar el CA en el contenedor con `certs/corp-ca.pem` + `NODE_EXTRA_CA_CERTS=/app/certs/corp-ca.pem` en `.env`. El dashboard no desactiva la verificación TLS.
 

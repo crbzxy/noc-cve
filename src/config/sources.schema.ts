@@ -19,6 +19,8 @@ export type TechnologyCategory = 'language' | 'framework'
 export type TruthSourceId =
   | 'nvd'
   | 'cveorg'
+  | 'circl'
+  | 'redhat'
   | 'github'
   | 'osv'
   | 'wordfence'
@@ -121,6 +123,24 @@ const TRUTH_SOURCES: SourceConfig[] = [
     proxyPrefix: '/api/cveorg',
     baseUrl: 'https://www.cve.org',
     path: '/restapiv1/search',
+  },
+  {
+    id: 'circl',
+    label: 'CIRCL Vulnerability-Lookup',
+    enabled: true,
+    role: 'list',
+    proxyPrefix: '/api/circl',
+    baseUrl: 'https://vulnerability.circl.lu',
+    path: '/api',
+  },
+  {
+    id: 'redhat',
+    label: 'Red Hat Security Data',
+    enabled: true,
+    role: 'list',
+    proxyPrefix: '/api/redhat',
+    baseUrl: 'https://access.redhat.com',
+    path: '/hydra/rest/securitydata/cve.json',
   },
   {
     id: 'osv',
