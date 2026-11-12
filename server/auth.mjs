@@ -270,14 +270,34 @@ export async function handleAuthRequest(req, res) {
 
   if (isAuthenticated(req)) return false
 
-  const wantsHtml = String(req.headers.accept ?? '').includes('text/html')
-  const browserGet = method === 'GET' && !pathname.startsWith('/api/')
-  if (wantsHtml || browserGet) {
+  // Solo redirigir navegación de documento. Scripts/módulos (.tsx/.js) no deben
+  // recibir el HTML de /login (rompe type=module con MIME incorrecto).
+  if (isDocumentNavigation(req, pathname)) {
     sendUnauthorized(res, { redirect: true })
     return true
   }
   sendUnauthorized(res)
   return true
+}
+
+function isAssetOrModulePath(pathname) {
+  return pathname.startsWith('/@vite')
+    || pathname.startsWith('/@fs')
+    || pathname.startsWith('/@id')
+    || pathname.startsWith('/@react-refresh')
+    || pathname.startsWith('/src/')
+    || pathname.startsWith('/assets/')
+    || pathname.startsWith('/node_modules/')
+    || pathname.startsWith('/config/')
+    || /\.(tsx?|jsx?|mjs|cjs|css|map|wasm|json|svg|png|ico|woff2?)(\?|$)/i.test(pathname)
+}
+
+function isDocumentNavigation(req, pathname) {
+  if (isAssetOrModulePath(pathname)) return false
+  const fetchDest = String(req.headers['sec-fetch-dest'] ?? '')
+  if (fetchDest === 'document') return true
+  if (fetchDest && fetchDest !== 'document') return false
+  return String(req.headers.accept ?? '').includes('text/html')
 }
 
 /** Fingerprint estable solo para logs (no es secreto). */

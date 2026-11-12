@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { createServer as createHttpServer } from 'node:http'
 import { createServer as createHttpsServer } from 'node:https'
-import { dirname, extname, join, normalize } from 'node:path'
+import { dirname, extname, join, normalize, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { requireHttpsTarget, upstreams } from '../proxy.config.mjs'
 import { describeFetchFailure, httpErrorPayload, networkErrorPayload } from '../proxy.errors.mjs'
@@ -36,9 +36,23 @@ function resolveTlsMaterial() {
 const tls = resolveTlsMaterial()
 const useTls = Boolean(tls) && !allowHttp
 const mime = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
-  '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon',
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.map': 'application/json; charset=utf-8',
 }
+
+const ASSET_EXTENSIONS = new Set([
+  '.js', '.mjs', '.css', '.map', '.json', '.svg', '.png', '.ico', '.woff', '.woff2',
+  '.ts', '.tsx', '.jsx', '.wasm',
+])
 
 const cache = new Map()
 const TTL_MS = 60_000
@@ -134,16 +148,37 @@ async function proxy(req, res, prefix, up) {
   }
 }
 
+function resolveDistFile(requestUrl) {
+  const rawPath = decodeURIComponent((requestUrl ?? '/').split('?')[0] || '/')
+  const relative = normalize(rawPath).replace(/^[/\\]+/, '').replace(/^(\.\.[/\\])+/, '')
+  if (!relative || relative === '.' || relative.startsWith('..')) {
+    return join(distRoot, 'index.html')
+  }
+  return join(distRoot, relative)
+}
+
 async function serveStatic(req, res) {
-  const clean = normalize(decodeURIComponent(req.url.split('?')[0])).replace(/^(\.\.[/\\])+/, '')
-  let file = join(distRoot, clean)
+  const requested = resolveDistFile(req.url)
+  const extension = extname(requested).toLowerCase()
+  let file = requested
   try {
-    if (!(await stat(file)).isFile()) throw new Error()
+    if (!(await stat(file)).isFile()) throw new Error('missing')
   } catch {
+    // No servir index.html como fallback de JS/CSS: el browser lo interpreta como módulo roto.
+    if (ASSET_EXTENSIONS.has(extension)) {
+      res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('Not found')
+      return
+    }
     file = join(distRoot, 'index.html')
   }
+  const fromDist = relative(distRoot, file)
+  if (!fromDist || fromDist.startsWith('..') || fromDist.startsWith(`..${sep}`)) {
+    res.writeHead(403).end()
+    return
+  }
   const data = await readFile(file)
-  res.writeHead(200, { 'content-type': mime[extname(file)] ?? 'application/octet-stream' }).end(data)
+  const type = mime[extname(file).toLowerCase()] ?? 'application/octet-stream'
+  res.writeHead(200, { 'content-type': type }).end(data)
 }
 
 async function onRequest(req, res) {
